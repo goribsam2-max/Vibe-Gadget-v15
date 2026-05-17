@@ -23,6 +23,7 @@ import {
 } from "framer-motion";
 import Icon from "../components/Icon";
 import SEO from "../components/SEO";
+import { PixelImage } from "../components/ui/PixelImage";
 import { CustomSectionEmbed } from "../components/CustomSectionEmbed";
 import { useTheme } from "../components/ThemeContext";
 import { CommentReply } from "../components/ui/comment-reply";
@@ -573,10 +574,10 @@ const ProductDetails: React.FC = () => {
                 className="relative aspect-square md:aspect-[4/5] w-full overflow-hidden rounded-[32px] bg-[#f5f5f5] dark:bg-zinc-800/80 flex items-center justify-center cursor-zoom-in group"
                 onClick={() => setFullScreenImg(images[activeImg])}
               >
-                <img
+                <PixelImage
                   src={images[activeImg]}
                   alt={`${product.name} image ${activeImg + 1}`}
-                  className={`object-contain w-full h-full mix-blend-multiply dark:mix-blend-normal group-hover:scale-105 transition-transform duration-700 ${product.stock <= 0 ? "grayscale opacity-75" : ""}`}
+                  imgClassName={`object-contain mix-blend-multiply dark:mix-blend-normal group-hover:scale-105 transition-transform duration-700 ${product.stock <= 0 ? "grayscale opacity-75" : ""}`}
                 />
 
                 {/* Top Right Heart Outline */}

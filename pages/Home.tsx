@@ -35,6 +35,7 @@ import { HeroSlider } from "../components/ui/hero-slider";
 import { LogoTimeline, type LogoItem } from "../components/ui/logo-timeline";
 import { Tag, Zap, Crown, Users, Sparkles, Star } from "lucide-react";
 import { ReferralCard } from "../components/ui/referral-card";
+import { PixelImage } from "../components/ui/PixelImage";
 
 const BrandIcon = ({ brandName }: { brandName: string }) => {
   const [error, setError] = useState(false);
@@ -68,10 +69,10 @@ const ThinBanner = ({ banner, navigate }: { banner: any; navigate: any }) => {
       className="relative overflow-hidden rounded-2xl cursor-pointer hover-tilt w-full mb-14 border border-zinc-100 dark:border-zinc-800 shadow-sm"
       onClick={() => banner.link && navigate(banner.link)}
     >
-      <img
+      <PixelImage
         src={banner.imageUrl}
         alt="banner"
-        className="w-full h-auto object-cover"
+        grid="8x3"
       />
 
       <div
@@ -637,9 +638,10 @@ const Home: React.FC<{ userData?: any }> = ({ userData }) => {
                     >
                       <div className="col-span-2 md:col-span-3 h-full relative bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center p-6 overflow-hidden">
                         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-zinc-200/50 via-zinc-100/10 to-zinc-50/0 dark:from-zinc-700/50 dark:via-zinc-800/10 dark:to-zinc-900/0 mix-blend-multiply dark:mix-blend-normal"></div>
-                        <img
+                        <PixelImage
                           src={product.image}
-                          className="w-full h-[80%] object-contain mix-blend-multiply dark:mix-blend-normal group-hover:scale-[1.1] transition-transform duration-1000 relative z-10 "
+                          grid="4x4"
+                          imgClassName="h-[80%] object-contain mix-blend-multiply dark:mix-blend-normal group-hover:scale-[1.1] transition-transform duration-1000 relative z-10 "
                           alt={product.name}
                         />
                       </div>

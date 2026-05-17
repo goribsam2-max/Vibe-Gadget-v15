@@ -440,10 +440,6 @@ const SmallCreatorsHub: React.FC<{ userData: UserProfile }> = ({ userData }) => 
                    <img src={generatedUrl} className="w-full h-full object-contain select-auto pointer-events-auto" style={{ WebkitTouchCallout: 'default' }} alt="Generated Sticker" />
                 </div>
                 
-                <p className="text-[11px] text-orange-600 dark:text-orange-400 font-medium mb-6 bg-orange-50 dark:bg-orange-950/40 p-2 rounded-lg border border-orange-200 dark:border-orange-900/50 leading-relaxed">
-                  If the download didn't start, <strong>Long press</strong> or <strong>Right click</strong> the image above and choose "Save Image".
-                </p>
-                
                 <div className="flex flex-col gap-3 w-full">
                   <Button 
                     onClick={handleShareOrDownload}

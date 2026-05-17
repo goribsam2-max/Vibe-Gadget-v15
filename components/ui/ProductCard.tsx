@@ -5,6 +5,7 @@ import { Product } from "../../types";
 import { Heart, ShoppingBag } from "lucide-react";
 import { auth, db } from "../../firebase";
 import { doc, setDoc, deleteDoc, onSnapshot } from "firebase/firestore";
+import { PixelImage } from "./PixelImage";
 
 export const ProductCard = ({ product }: { product: Product }) => {
   const navigate = useNavigate();
@@ -87,10 +88,10 @@ export const ProductCard = ({ product }: { product: Product }) => {
       >
         {/* Image Container */}
         <div className="relative h-44 sm:h-52 w-full overflow-hidden bg-[#f9f9f9] dark:bg-zinc-800">
-          <img
+          <PixelImage
             src={product.image}
             alt={product.name}
-            className="w-full h-full object-cover mix-blend-multiply dark:mix-blend-normal group-hover:scale-105 transition-transform duration-500"
+            imgClassName="mix-blend-multiply dark:mix-blend-normal group-hover:scale-105 transition-transform duration-500"
           />
 
           {/* Top Right Heart Outline */}
