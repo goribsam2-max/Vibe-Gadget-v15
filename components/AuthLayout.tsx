@@ -91,11 +91,11 @@ export function AuthLayout({ children, title, subtitle }: { children: React.Reac
 						<Logo scale={0.8} className="origin-left" />
 					</div>
 					{(title || subtitle) && (
-                        <div className="flex flex-col space-y-1">
-                            {title && <h1 className="font-heading text-2xl font-bold tracking-wide">
+                        <div className="flex flex-col space-y-3 mb-6">
+                            {title && <h1 className="font-outfit text-3xl md:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 leading-tight">
                                 {title}
                             </h1>}
-                            {subtitle && <p className="text-muted-foreground text-sm font-medium leading-relaxed">
+                            {subtitle && <p className="text-zinc-500 dark:text-zinc-400 text-sm md:text-base font-medium leading-relaxed">
                                 {subtitle}
                             </p>}
                         </div>

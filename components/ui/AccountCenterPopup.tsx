@@ -116,7 +116,7 @@ export function AccountCenterPopup({ isOpen, onClose, savedAccounts, currentUid 
             className="w-full sm:max-w-md bg-white dark:bg-zinc-900 rounded-t-[32px] sm:rounded-[32px] overflow-hidden shadow-2xl flex flex-col"
           >
             <div className="p-6 pb-2 relative flex items-center justify-between">
-               <h2 className="text-xl font-bold text-zinc-900 dark:text-锌-100">Choose Account</h2>
+               <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">Choose Account</h2>
                <button onClick={onClose} className="p-2 bg-zinc-100 dark:bg-zinc-800 rounded-full hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors">
                   <X className="w-5 h-5 text-zinc-600 dark:text-zinc-400" />
                </button>

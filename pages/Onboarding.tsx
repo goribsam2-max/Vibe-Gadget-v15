@@ -62,15 +62,15 @@ const Onboarding: React.FC<{ onFinish: () => void }> = ({ onFinish }) => {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
             transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-            className="w-full flex flex-col items-center"
+            className="w-full flex flex-col items-center max-w-md mx-auto"
           >
-            <div className="w-full aspect-[4/5] bg-zinc-50 dark:bg-zinc-800 rounded-full mb-12 overflow-hidden shadow-sm shadow-zinc-100">
+            <div className="w-full max-w-[280px] lg:max-w-[320px] aspect-[4/5] bg-zinc-50 dark:bg-zinc-800 rounded-[40px] mb-8 overflow-hidden shadow-sm shadow-zinc-100 flex-shrink-0">
               <img src={slides[current].image} className="w-full h-full object-cover" alt="" />
             </div>
-            <h1 className="text-xl font-semibold text-center mb-4 tracking-tight leading-none">
+            <h1 className="text-2xl md:text-xl font-bold font-outfit text-center mb-3 tracking-tight leading-tight text-zinc-900 dark:text-zinc-100">
               {slides[current].title}
             </h1>
-            <p className="text-zinc-500 text-sm text-center leading-relaxed mb-10 px-6 font-medium">
+            <p className="text-zinc-500 text-sm md:text-base text-center leading-relaxed mb-8 px-6 font-medium">
               {slides[current].desc}
             </p>
           </motion.div>
@@ -84,21 +84,21 @@ const Onboarding: React.FC<{ onFinish: () => void }> = ({ onFinish }) => {
           ))}
         </div>
       </div>
-      <div className="space-y-4 w-full">
+      <div className="space-y-4 w-full max-w-md mx-auto relative z-10">
         <Button
           variant="primary"
           onClick={next}
-          className="w-full shadow-sm shadow-black/10 py-5 text-sm tracking-normal"
+          className="w-full shadow-[0_8px_30px_rgb(0,0,0,0.12)] py-6 rounded-2xl text-base tracking-wide font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100 transition-all active:scale-[0.98]"
         >
           {current === slides.length - 1 ? "Start Shopping" : "Continue"}
         </Button>
 
         {current === 0 && (
-          <p className="text-center text-[10px] font-bold  tracking-normal text-zinc-400">
+          <p className="text-center text-sm font-medium text-zinc-500 dark:text-zinc-400 mt-6">
             Already a member?{" "}
             <button
-              onClick={() => navigate("/signin")}
-              className="text-black dark:text-white underline"
+              onClick={() => navigate("/auth-selector")}
+              className="text-zinc-900 dark:text-white font-bold hover:underline underline-offset-4"
             >
               Sign In
             </button>

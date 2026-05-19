@@ -6,6 +6,7 @@ import { Heart, ShoppingBag } from "lucide-react";
 import { auth, db } from "../../firebase";
 import { doc, setDoc, deleteDoc, onSnapshot } from "firebase/firestore";
 import { PixelImage } from "./PixelImage";
+import { getProductCoinReward } from "../../lib/coinRewards";
 
 export const ProductCard = ({ product }: { product: Product }) => {
   const navigate = useNavigate();
@@ -106,6 +107,13 @@ export const ProductCard = ({ product }: { product: Product }) => {
 
           {/* Dynamic Price Cutout at Bottom Right */}
           <div className="absolute bottom-0 right-0 bg-white dark:bg-zinc-900 rounded-tl-[15px] pl-3 pt-2.5 pb-0 pr-0 flex items-center justify-center z-10">
+            {/* VG Coin Badge */}
+            {getProductCoinReward(product.id) > 0 && (
+                <div className="absolute bottom-full right-2 mb-1 flex items-center bg-zinc-900/80 backdrop-blur-md rounded-full px-1.5 py-0.5">
+                    <div className="h-3 w-3 flex items-center justify-center font-black text-[7px] text-amber-500 border border-amber-500 rounded-full mr-1 bg-white">V</div>
+                    <span className="text-[9px] font-bold text-amber-400">+{getProductCoinReward(product.id)}</span>
+                </div>
+            )}
             {/* Inverted curves using SVG */}
             <svg
               className="absolute right-0 bottom-full w-4 h-4 text-white dark:text-zinc-900 translate-y-[0.5px]"

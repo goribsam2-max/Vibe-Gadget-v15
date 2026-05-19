@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, updateDoc, collection, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
 import { getToken } from 'firebase/messaging';
 import { auth, db, messaging } from './firebase';
 import { ToastProvider, useNotify } from './components/Notifications';
@@ -238,9 +238,17 @@ import DesktopLayout from './components/DesktopLayout';
 import AdminLayout from './components/AdminLayout';
 
 import ManageFakeOrders from './pages/admin/ManageFakeOrders';
+import Deposit from './pages/Deposit';
+import ManageDeposits from './pages/admin/ManageDeposits';
+import BonusProducts from './pages/BonusProducts';
+import ShoppingCredits from './pages/ShoppingCredits';
+import BundleDeals from './pages/BundleDeals';
+import MyCoupons from './pages/MyCoupons';
+import MyCoins from './pages/MyCoins';
 import GenericAdminMock from './pages/admin/GenericAdminMock';
 import ManageCoupons from './pages/admin/ManageCoupons';
 import ManageHelpDesk from './pages/admin/ManageHelpDesk';
+import ManagePromoCodes from './pages/admin/ManagePromoCodes';
 import ManageChats from './pages/admin/ManageChats';
 import ManageStaff from './pages/admin/ManageStaff';
 import ManageStories from './pages/admin/ManageStories';
@@ -253,6 +261,30 @@ import ManageRiders from './pages/admin/ManageRiders';
 
 import ErrorBoundary from './components/ErrorBoundary';
 import { AccountCenterPopup, SavedAccount } from './components/ui/AccountCenterPopup';
+
+const MigrationHelper = () => {
+  useEffect(() => {
+    const migrate = async () => {
+      if (localStorage.getItem('migrated_coupons_to_promos_v1')) return;
+      try {
+        const snap = await getDocs(collection(db, 'coupons'));
+        if (snap.empty) {
+            localStorage.setItem('migrated_coupons_to_promos_v1', 'true');
+            return;
+        }
+        for (const d of snap.docs) {
+           await setDoc(doc(db, 'promo_codes', d.id), d.data());
+           await deleteDoc(doc(db, 'coupons', d.id));
+        }
+        localStorage.setItem('migrated_coupons_to_promos_v1', 'true');
+      } catch (e) {
+          console.error(e);
+      }
+    };
+    migrate();
+  }, []);
+  return null;
+}
 
 const PageWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   useEffect(() => {
@@ -329,6 +361,9 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser) {
+        import('./lib/coinExpiry').then(({ sweepExpiredCoins }) => {
+            sweepExpiredCoins(currentUser.uid).catch(e => console.error(e));
+        });
         const unsubProfile = onSnapshot(doc(db, 'users', currentUser.uid), async (docSnap) => {
           if (docSnap.exists()) {
             setUserData(docSnap.data() as UserProfile);
@@ -384,6 +419,12 @@ const AppContent: React.FC = () => {
           <Route path="/product/:id/reviews" element={<PageWrapper><ProductReviews /></PageWrapper>} />
           <Route path="/cart" element={<PageWrapper><Cart /></PageWrapper>} />
           <Route path="/checkout" element={<PageWrapper><CheckoutPage /></PageWrapper>} />
+          <Route path="/deposit" element={<PageWrapper><Deposit /></PageWrapper>} />
+          <Route path="/my-coupons" element={<PageWrapper><MyCoupons /></PageWrapper>} />
+          <Route path="/my-coins" element={<PageWrapper><MyCoins /></PageWrapper>} />
+          <Route path="/bonus" element={<PageWrapper><BonusProducts /></PageWrapper>} />
+          <Route path="/credits" element={<PageWrapper><ShoppingCredits /></PageWrapper>} />
+          <Route path="/bundles" element={<PageWrapper><BundleDeals /></PageWrapper>} />
           <Route path="/success" element={<PageWrapper><OrderSuccess /></PageWrapper>} />
           <Route path="/profile" element={<PageWrapper><Profile userData={userData} /></PageWrapper>} />
           <Route path="/affiliate" element={<PageWrapper><AffiliatePage /></PageWrapper>} />
@@ -430,6 +471,7 @@ const AppContent: React.FC = () => {
                   <Route path="orders" element={<PageWrapper><ManageOrders /></PageWrapper>} />
                   <Route path="reviews" element={<PageWrapper><ManageReviews /></PageWrapper>} />
                   <Route path="fake-orders" element={<PageWrapper><ManageFakeOrders /></PageWrapper>} />
+                  <Route path="deposits" element={<PageWrapper><ManageDeposits /></PageWrapper>} />
                   <Route path="notifications" element={<PageWrapper><AdminNotifications /></PageWrapper>} />
                   <Route path="banners" element={<PageWrapper><ManageBanners /></PageWrapper>} />
                   <Route path="config" element={<PageWrapper><ManageConfig /></PageWrapper>} />
@@ -437,6 +479,7 @@ const AppContent: React.FC = () => {
                   <Route path="stories" element={<PageWrapper><ManageStories /></PageWrapper>} />
                   <Route path="seo" element={<PageWrapper><ManageSEO /></PageWrapper>} />
                   <Route path="coupons" element={<PageWrapper><ManageCoupons /></PageWrapper>} />
+                  <Route path="promo-codes" element={<PageWrapper><ManagePromoCodes /></PageWrapper>} />
                   <Route path="chats" element={<PageWrapper><ManageChats /></PageWrapper>} />
                   <Route path="helpdesk" element={<PageWrapper><ManageHelpDesk /></PageWrapper>} />
                   <Route path="staff" element={<PageWrapper><ManageStaff /></PageWrapper>} />
@@ -468,6 +511,7 @@ const App: React.FC = () => {
   return (
     <ThemeProvider>
       <ToastProvider>
+        <MigrationHelper />
         <Router>
           <AppContent />
           {/* <NotificationPermissionModal /> */}

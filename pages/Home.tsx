@@ -162,6 +162,8 @@ const Home: React.FC<{ userData?: any }> = ({ userData }) => {
   const [banners, setBanners] = useState<any[]>([]);
   const [settings, setSettings] = useState<any>({});
   const [activeBanner, setActiveBanner] = useState(0);
+  const [activeCategoryBanner, setActiveCategoryBanner] = useState(0);
+  const [activeBottomBanner, setActiveBottomBanner] = useState(0);
   const [activeFeatured, setActiveFeatured] = useState(0);
   const [activeCategory, setActiveCategory] = useState("All");
   const [locationName, setLocationName] = useState("Locating...");
@@ -174,6 +176,8 @@ const Home: React.FC<{ userData?: any }> = ({ userData }) => {
   );
   const popupBanners = banners.filter((b) => b.bannerType === "popup");
   const gifBanners = banners.filter((b) => b.bannerType === "gif");
+  const categoryBanners = banners.filter((b) => b.bannerType === "category" || b.bannerType === "profile");
+  const bottomBanners = banners.filter((b) => b.bannerType === "bottom");
 
   useEffect(() => {
     if (heroBanners.length <= 1) return;
@@ -182,6 +186,22 @@ const Home: React.FC<{ userData?: any }> = ({ userData }) => {
     }, 5000);
     return () => clearInterval(timer);
   }, [heroBanners.length]);
+
+  useEffect(() => {
+    if (categoryBanners.length <= 1) return;
+    const timer = setInterval(() => {
+      setActiveCategoryBanner((prev) => (prev + 1) % categoryBanners.length);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [categoryBanners.length]);
+
+  useEffect(() => {
+    if (bottomBanners.length <= 1) return;
+    const timer = setInterval(() => {
+      setActiveBottomBanner((prev) => (prev + 1) % bottomBanners.length);
+    }, 4500);
+    return () => clearInterval(timer);
+  }, [bottomBanners.length]);
 
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
@@ -444,39 +464,6 @@ const Home: React.FC<{ userData?: any }> = ({ userData }) => {
     setSearchResults(results);
   }, [searchQuery, products]);
 
-  // Auto Slider for Hero Banners
-  useEffect(() => {
-    let heroBanners = [];
-    if (banners && banners.length > 0) {
-      heroBanners = banners;
-    } else if (settings?.heroBanners && settings?.heroBanners.length > 0) {
-      heroBanners = settings.heroBanners;
-    } else {
-      heroBanners = [
-        {
-          title: "Summer Collection",
-          description: "Up to 50% off on all items",
-          imageUrl:
-            "https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=800&auto=format&fit=crop&q=80",
-          link: "",
-        },
-        {
-          title: "New Tech Gadgets",
-          description: "Discover the future today",
-          imageUrl:
-            "https://images.unsplash.com/photo-1542382257-80dedb725088?w=800&auto=format&fit=crop&q=80",
-          link: "",
-        },
-      ];
-    }
-
-    if (heroBanners.length > 1) {
-      const interval = setInterval(() => {
-        setActiveBanner((prev) => (prev + 1) % heroBanners.length);
-      }, 5000);
-      return () => clearInterval(interval);
-    }
-  }, [banners, settings?.heroBanners]);
 
   // Story progress logic
   useEffect(() => {
@@ -737,6 +724,28 @@ const Home: React.FC<{ userData?: any }> = ({ userData }) => {
         </div>
       )}
 
+      {categoryBanners.length > 0 && (
+          <div className="mb-10 w-full animate-fade-in group px-0 md:px-0">
+                <div className="rounded-[24px] overflow-hidden shadow-sm aspect-[21/9] relative group cursor-pointer mx-0" onClick={() => navigate(categoryBanners[activeCategoryBanner]?.link || '/all-products')}>
+                    <div
+                    className="flex transition-transform duration-700 ease-[cubic-bezier(0.23, 1, 0.32, 1)] h-full"
+                    style={{ transform: `translateX(-${activeCategoryBanner * 100}%)` }}
+                    >
+                    {categoryBanners.map((banner) => (
+                        <div key={banner.id} className="min-w-full h-full relative">
+                        <img src={banner.imageUrl} alt="Banner" className="w-full h-full object-cover" />
+                        </div>
+                    ))}
+                    </div>
+                    {categoryBanners.length > 1 && (
+                      <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-black/40 backdrop-blur-md text-white text-xs font-medium z-10">
+                          {activeCategoryBanner + 1} / {categoryBanners.length}
+                      </div>
+                    )}
+                </div>
+          </div>
+      )}
+
       {/* Partner & Earn Cash (Referral Banner) */}
       <div className="mb-10 w-full animate-fade-in group flex justify-center px-4">
         <div 
@@ -952,6 +961,28 @@ const Home: React.FC<{ userData?: any }> = ({ userData }) => {
       )}
       {gifBanners.length > 4 && (
         <ThinBanner banner={gifBanners[4]} navigate={navigate} />
+      )}
+
+      {bottomBanners.length > 0 && (
+          <div className="mb-10 w-full animate-fade-in group px-0 md:px-0">
+                <div className="rounded-[24px] overflow-hidden shadow-sm aspect-[21/9] relative group cursor-pointer mx-0" onClick={() => navigate(bottomBanners[activeBottomBanner]?.link || '/all-products')}>
+                    <div
+                    className="flex transition-transform duration-700 ease-[cubic-bezier(0.23, 1, 0.32, 1)] h-full"
+                    style={{ transform: `translateX(-${activeBottomBanner * 100}%)` }}
+                    >
+                    {bottomBanners.map((banner) => (
+                        <div key={banner.id} className="min-w-full h-full relative">
+                        <img src={banner.imageUrl} alt="Banner" className="w-full h-full object-cover" />
+                        </div>
+                    ))}
+                    </div>
+                    {bottomBanners.length > 1 && (
+                      <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-black/40 backdrop-blur-md text-white text-xs font-medium z-10">
+                          {activeBottomBanner + 1} / {bottomBanners.length}
+                      </div>
+                    )}
+                </div>
+          </div>
       )}
 
       <CustomSectionEmbed location="home_bottom" />

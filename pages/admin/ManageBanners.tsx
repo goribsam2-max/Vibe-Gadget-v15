@@ -27,7 +27,7 @@ interface Banner {
   description: string;
   link?: string;
   createdAt: number;
-  bannerType?: 'hero' | 'popup' | 'gif';
+  bannerType?: 'hero' | 'popup' | 'gif' | 'profile' | 'category' | 'bottom';
 }
 
 const ManageBanners: React.FC = () => {
@@ -47,7 +47,7 @@ const ManageBanners: React.FC = () => {
     description: "",
     link: "",
     imageFile: null as File | null,
-    bannerType: "hero" as "hero" | "popup" | "gif",
+    bannerType: "hero" as "hero" | "popup" | "gif" | "profile" | "category" | "bottom",
   });
 
   const fetchBanners = async () => {
@@ -249,6 +249,8 @@ const ManageBanners: React.FC = () => {
                 <option value="hero">Hero (Top Slider)</option>
                 <option value="popup">Welcome Popup</option>
                 <option value="gif">Thin GIF Banner</option>
+                <option value="profile">Profile Slider</option>
+                <option value="bottom">Home Bottom Banner</option>
               </select>
             </div>
 
@@ -350,12 +352,16 @@ const ManageBanners: React.FC = () => {
                   <div className="flex w-full items-start justify-between gap-4">
                     <div className="flex flex-col gap-1 w-full relative">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-[9px] font-bold tracking-wider px-2 py-0.5 rounded-sm shrink-0">
+                        <span className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-[9px] font-bold tracking-wider px-2 py-0.5 rounded-sm shrink-0 uppercase">
                           {banner.bannerType === "popup"
                             ? "WELCOME POPUP"
                             : banner.bannerType === "gif"
                               ? "GIF BANNER"
-                              : "HERO SLIDER"}
+                              : banner.bannerType === "profile"
+                                ? "PROFILE SLIDER"
+                                : banner.bannerType === "bottom"
+                                    ? "BOTTOM BANNER"
+                                    : "HERO SLIDER"}
                         </span>
                       </div>
                       <ItemTitle>{banner.title}</ItemTitle>

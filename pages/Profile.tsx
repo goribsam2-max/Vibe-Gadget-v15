@@ -3,7 +3,7 @@ import { UserProfile, Order, OrderStatus } from "../types";
 import { useNavigate, Link } from "react-router-dom";
 import { auth, db } from "../firebase";
 import { signOut, updateProfile } from "firebase/auth";
-import { doc, updateDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { doc, updateDoc, collection, query, where, getDocs, orderBy, onSnapshot } from "firebase/firestore";
 import { useNotify } from "../components/Notifications";
 import { uploadToImgbb } from "../services/imgbb";
 import { cn } from "../lib/utils";
@@ -11,9 +11,10 @@ import { AvatarUploader } from "../components/ui/avatar-uploader";
 import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import Icon from "../components/Icon";
 import { motion } from "framer-motion";
-import { Settings, UserPlus, Star, Shield, ShoppingBag, FileText, Heart, Headphones, Lock, Info, Mail, LogOut, ShieldCheck, ChevronRight, Wallet, TrendingUp, Diamond, Gift, CreditCard, Truck, Package, MessageSquareShare } from "lucide-react";
+import { Settings, UserPlus, Star, Shield, ShoppingBag, FileText, Heart, Headphones, Lock, Info, Mail, LogOut, ShieldCheck, ChevronRight, Wallet, TrendingUp, Diamond, Gift, CreditCard, Truck, Package, MessageSquareShare, Clock, Ticket, Store, CircleDollarSign, Sparkles } from "lucide-react";
 import { useTheme } from "../components/ThemeContext";
 import { TourProvider, TourAlertDialog, useTour } from "@/components/ui/tour";
+import { ProductCard } from "../components/ui/ProductCard";
 
 const ProfileTourSteps = () => {
     const { setSteps } = useTour();
@@ -76,10 +77,35 @@ const Profile: React.FC<{ userData: UserProfile | null }> = ({
   );
   const [orderCount, setOrderCount] = useState(0);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [recommendedProducts, setRecommendedProducts] = useState<any[]>([]);
+  const [banners, setBanners] = useState<any[]>([]);
+  const [activeBanner, setActiveBanner] = useState(0);
 
   useEffect(() => {
     setLocalUserData(initialUserData);
   }, [initialUserData]);
+
+  useEffect(() => {
+    const qBanners = query(collection(db, "banners"), orderBy("createdAt", "desc"));
+    const unsubscribeBanners = onSnapshot(qBanners, (snapshot) => {
+        setBanners(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+    return () => unsubscribeBanners();
+  }, []);
+
+  useEffect(() => {
+    let heroBanners = [];
+    if (banners && banners.length > 0) {
+      heroBanners = banners.filter(b => b.bannerType === "profile");
+    }
+    if (heroBanners.length > 1) {
+      const interval = setInterval(
+        () => setActiveBanner((prev) => (prev + 1) % heroBanners.length),
+        4000
+      );
+      return () => clearInterval(interval);
+    }
+  }, [banners]);
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -98,6 +124,22 @@ const Profile: React.FC<{ userData: UserProfile | null }> = ({
     };
     fetchOrders();
   }, [auth.currentUser]);
+
+  useEffect(() => {
+    const fetchRecommended = async () => {
+      try {
+        const q = query(collection(db, "products"));
+        const snapshot = await getDocs(q);
+        const docs = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        // Shuffle or just pick a few for recommendations
+        const shuffled = docs.sort(() => 0.5 - Math.random());
+        setRecommendedProducts(shuffled.slice(0, 6));
+      } catch (error) {
+        console.error("Error fetching recommended products:", error);
+      }
+    };
+    fetchRecommended();
+  }, []);
 
   const handleAvatarUpload = async (file: File) => {
     if (!auth.currentUser) return { success: false };
@@ -170,77 +212,93 @@ const Profile: React.FC<{ userData: UserProfile | null }> = ({
       </div>
 
       {/* Main Content Card overlapping the header */}
-      <div className="px-5 -mt-20 relative z-30 max-w-lg mx-auto space-y-5 lg:space-y-6">
-          <div id="profile-info" className="bg-white dark:bg-zinc-900 rounded-[32px] p-6 shadow-sm">
-              <div className="flex justify-between items-start mb-4">
-                  <div className="-mt-16 relative">
-                     <AvatarUploader onUpload={handleAvatarUpload}>
-                         <div className="relative group">
-                            <Avatar className="w-24 h-24 rounded-full border-[4px] border-white dark:border-zinc-900 shadow-sm cursor-pointer object-cover">
-                                <AvatarImage src={localUserData?.photoURL || `https://ui-avatars.com/api/?name=${localUserData.displayName}&background=000&color=fff`} className="object-cover"/>
-                                <AvatarFallback className="text-2xl font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200">
-                                {localUserData.displayName?.charAt(0) || "U"}
-                                </AvatarFallback>
-                            </Avatar>
-                            <div className="absolute inset-0 bg-black/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
-                                <Icon name="camera" className="text-white text-xl" />
-                            </div>
-                         </div>
-                     </AvatarUploader>
-                  </div>
-                  <button onClick={() => {
-                      if (localUserData.isAffiliate) {
-                          const link = `${window.location.origin}?ref=${localUserData.uid}`;
-                          navigator.clipboard.writeText(link);
-                          notify("Referral link copied to clipboard!", "success");
-                      } else {
-                          navigate('/affiliate');
-                      }
-                  }} className="flex items-center space-x-1.5 px-4 py-2 mt-2 rounded-full border-2 border-[#FF5C01] text-[#FF5C01] text-sm font-semibold hover:bg-[#FF5C01]/5 transition-colors">
-                      <UserPlus className="w-4 h-4" />
-                      <span>Invite</span>
-                  </button>
-              </div>
-
-              <div className="flex justify-between items-start">
-                  <div 
-                     onClick={() => window.dispatchEvent(new CustomEvent('openAccountCenter'))}
-                     className="cursor-pointer active:scale-95 transition-transform"
-                  >
-                      <h1 className="text-[22px] font-bold text-zinc-900 dark:text-zinc-100 tracking-tight leading-tight mb-1 flex items-center space-x-1">
-                          <span>{localUserData.displayName || "User"}</span>
-                          <ChevronRight className="w-4 h-4 text-zinc-400 rotate-90" />
-                      </h1>
-                      <p className="text-sm text-zinc-500 font-medium break-all">
-                          {localUserData.email}
-                      </p>
-                  </div>
-                  <div className="flex space-x-6 text-center">
-                      <div>
-                          <p className="text-lg font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">{orderCount}</p>
-                          <p className="text-xs text-zinc-500 font-medium">Orders</p>
+      <div className="px-5 -mt-20 relative z-30 max-w-lg lg:max-w-6xl mx-auto flex flex-col lg:grid lg:grid-cols-12 gap-5 lg:gap-8">
+          
+          <div className="lg:col-span-5 space-y-5">
+              <div id="profile-info" className="bg-white dark:bg-zinc-900 rounded-[32px] p-6 shadow-sm">
+                  <div className="flex flex-col lg:flex-row justify-between items-center lg:items-end mb-4 gap-4 lg:gap-0">
+                      <div className="-mt-16 lg:-mt-12 relative shrink-0">
+                         <AvatarUploader onUpload={handleAvatarUpload}>
+                             <div className="relative group">
+                                <Avatar className="w-24 h-24 lg:w-28 lg:h-28 rounded-full border-[4px] border-white dark:border-zinc-900 shadow-sm cursor-pointer object-cover">
+                                    <AvatarImage src={localUserData?.photoURL || `https://ui-avatars.com/api/?name=${localUserData.displayName}&background=000&color=fff`} className="object-cover"/>
+                                    <AvatarFallback className="text-2xl font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200">
+                                    {localUserData.displayName?.charAt(0) || "U"}
+                                    </AvatarFallback>
+                                </Avatar>
+                                <div className="absolute inset-0 bg-black/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
+                                    <Icon name="camera" className="text-white text-xl" />
+                                </div>
+                             </div>
+                         </AvatarUploader>
                       </div>
-                      <div>
-                          <p className="text-lg font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">{localUserData.wishlist?.length || 0}</p>
-                          <p className="text-xs text-zinc-500 font-medium">Saved</p>
+                      <button onClick={() => {
+                          if (localUserData.isAffiliate) {
+                              const link = `${window.location.origin}?ref=${localUserData.uid}`;
+                              navigator.clipboard.writeText(link);
+                              notify("Referral link copied to clipboard!", "success");
+                          } else {
+                              navigate('/affiliate');
+                          }
+                      }} className="flex items-center space-x-1.5 px-4 py-2 mt-2 lg:mt-0 rounded-full border-2 border-[#FF5C01] text-[#FF5C01] text-sm font-semibold hover:bg-[#FF5C01]/5 transition-colors shrink-0">
+                          <UserPlus className="w-4 h-4" />
+                          <span>Invite</span>
+                      </button>
+                  </div>
+
+                  <div className="flex flex-col lg:flex-row justify-between items-center lg:items-start text-center lg:text-left gap-4 lg:gap-0">
+                      <div 
+                         onClick={() => window.dispatchEvent(new CustomEvent('openAccountCenter'))}
+                         className="cursor-pointer active:scale-95 transition-transform"
+                      >
+                          <h1 className="text-[22px] lg:text-[24px] font-bold text-zinc-900 dark:text-zinc-100 tracking-tight leading-tight mb-1 flex items-center justify-center lg:justify-start space-x-1">
+                              <span>{localUserData.displayName || "User"}</span>
+                              <ChevronRight className="w-4 h-4 text-zinc-400 rotate-90 lg:rotate-0" />
+                          </h1>
+                          <p className="text-sm text-zinc-500 font-medium break-all">
+                              {localUserData.email}
+                          </p>
+                      </div>
+                      <div className="flex space-x-6 text-center">
+                          <div>
+                              <p className="text-lg font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">{orderCount}</p>
+                              <p className="text-xs text-zinc-500 font-medium">Orders</p>
+                          </div>
+                          <div>
+                              <p className="text-lg font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">{localUserData.wishlist?.length || 0}</p>
+                              <p className="text-xs text-zinc-500 font-medium">Saved</p>
+                          </div>
                       </div>
                   </div>
               </div>
-          </div>
 
-          {/* Premium Status */}
-          <div id="profile-member" onClick={() => navigate('/affiliate')} className="bg-white dark:bg-zinc-900 rounded-[24px] shadow-sm p-4 px-5 flex items-center justify-between cursor-pointer active:scale-[0.98] transition-transform">
-              <div className="flex items-center space-x-3">
-                  <Diamond className="w-5 h-5 text-blue-500 fill-blue-500" />
-                  <span className="font-semibold text-[15px] text-zinc-900 dark:text-zinc-100">Member Status</span>
+              {/* Premium Status */}
+              <div id="profile-member" onClick={() => navigate('/affiliate')} className="bg-white dark:bg-zinc-900 rounded-[24px] shadow-sm p-4 px-5 flex items-center justify-between cursor-pointer active:scale-[0.98] transition-transform">
+                  <div className="flex items-center space-x-3">
+                      <Diamond className="w-5 h-5 text-blue-500 fill-blue-500" />
+                      <span className="font-semibold text-[15px] text-zinc-900 dark:text-zinc-100">Member Status</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                      <span className="text-[#FF5C01] text-sm font-semibold">{localUserData.isAffiliate ? "Pro" : "Standard"}</span>
+                      <ChevronRight className="w-4 h-4 text-[#FF5C01]" strokeWidth={2.5}/>
+                  </div>
               </div>
-              <div className="flex items-center space-x-1">
-                  <span className="text-[#FF5C01] text-sm font-semibold">{localUserData.isAffiliate ? "Pro" : "Standard"}</span>
-                  <ChevronRight className="w-4 h-4 text-[#FF5C01]" strokeWidth={2.5}/>
-              </div>
-          </div>
 
-          {/* Order Actions */}
+              {/* Affiliate Grid */}
+              {localUserData?.isAffiliate && (
+                <div className="grid grid-cols-2 gap-4">
+                    <div onClick={() => navigate('/affiliate')} className="p-5 bg-white dark:bg-zinc-900 rounded-[24px] shadow-sm border border-emerald-100 dark:border-emerald-900/30 text-center cursor-pointer active:scale-[0.98] transition-transform">
+                        <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 mb-0.5">৳ {localUserData.walletBalance || 0}</p>
+                        <p className="text-[13px] text-zinc-500 font-medium">Wallet</p>
+                    </div>
+                    <div onClick={() => navigate('/affiliate')} className="p-5 bg-white dark:bg-zinc-900 rounded-[24px] shadow-sm border border-emerald-100 dark:border-emerald-900/30 text-center cursor-pointer active:scale-[0.98] transition-transform">
+                        <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 mb-0.5">৳ {localUserData.totalEarned || 0}</p>
+                        <p className="text-[13px] text-zinc-500 font-medium">Total Earned</p>
+                    </div>
+                </div>
+              )}
+              
+              {/* Order Actions */}
           <div className="bg-white dark:bg-zinc-900 rounded-[24px] shadow-sm p-5 py-6">
               <div className="grid grid-cols-4 gap-2">
                   <div onClick={() => navigate('/orders/pay')} className="flex flex-col items-center justify-center cursor-pointer active:scale-95 transition-transform group">
@@ -292,6 +350,84 @@ const Profile: React.FC<{ userData: UserProfile | null }> = ({
                   </div>
               </div>
           </div>
+          
+            {/* Quick Links Row 1 */}
+            <div className="bg-white dark:bg-zinc-900 rounded-[24px] shadow-sm p-5 py-6">
+                <div className="grid grid-cols-3 gap-2">
+                    <div onClick={() => navigate('/orders')} className="flex flex-col items-center justify-center cursor-pointer active:scale-95 transition-transform group text-center">
+                        <Clock className="w-6 h-6 mb-2 text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors" />
+                        <span className="text-[11px] md:text-[12px] font-medium text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-zinc-100">History</span>
+                    </div>
+                    <div onClick={() => navigate('/wishlist')} className="flex flex-col items-center justify-center cursor-pointer active:scale-95 transition-transform group text-center">
+                        <Heart className="w-6 h-6 mb-2 text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors" />
+                        <span className="text-[11px] md:text-[12px] font-medium text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-zinc-100">Wishlist</span>
+                    </div>
+                    <div onClick={() => navigate('/coupon')} className="flex flex-col items-center justify-center cursor-pointer active:scale-95 transition-transform group text-center">
+                        <Ticket className="w-6 h-6 mb-2 text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors" />
+                        <span className="text-[11px] md:text-[12px] font-medium text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-zinc-100">Coupons</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Banner */}
+            {banners.filter(b => b.bannerType === "profile").length > 0 && (
+                <div className="rounded-[24px] overflow-hidden shadow-sm aspect-[21/9] relative group cursor-pointer" onClick={() => navigate(banners.filter(b => b.bannerType === "profile")[activeBanner]?.link || '/all-products')}>
+                    <div
+                    className="flex transition-transform duration-700 ease-[cubic-bezier(0.23, 1, 0.32, 1)] h-full"
+                    style={{ transform: `translateX(-${activeBanner * 100}%)` }}
+                    >
+                    {banners.filter(b => b.bannerType === "profile").map((banner) => (
+                        <div key={banner.id} className="min-w-full h-full relative">
+                        <img src={banner.imageUrl} alt="Banner" className="w-full h-full object-cover" />
+                        </div>
+                    ))}
+                    </div>
+                    <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-black/40 backdrop-blur-md text-white text-xs font-medium">
+                        {activeBanner + 1} / {banners.filter(b => b.bannerType === "profile").length}
+                    </div>
+                </div>
+            )}
+
+            {/* Highlighted Row */}
+            <div className="grid grid-cols-2 gap-4">
+                <div onClick={() => navigate('/bundles')} className="bg-[#FFF4E6] dark:bg-[#2A1F13] rounded-[24px] p-4 flex flex-row items-center justify-between cursor-pointer shadow-sm active:scale-95 transition-transform">
+                    <div>
+                        <h4 className="font-bold text-[15px] md:text-base text-zinc-900 dark:text-zinc-100 mb-0.5 tracking-tight">Bundle offers</h4>
+                        <p className="text-xs text-zinc-500 mb-2">Infinite bundles</p>
+                        <span className="px-3 py-1 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-bold text-[10px] rounded-full shadow-sm">Shop now</span>
+                    </div>
+                    <ShoppingBag className="w-10 h-10 text-[#FF5C01] drop-shadow-sm opacity-90"/>
+                </div>
+
+                <div onClick={() => navigate((localUserData?.coins || 0) > 0 ? '/my-coins' : '/my-coins')} className="bg-[#FFF0F5] dark:bg-[#2F1D25] rounded-[24px] p-4 flex flex-row items-center justify-between cursor-pointer shadow-sm active:scale-95 transition-transform">
+                    <div>
+                        <h4 className="font-bold text-[15px] md:text-base text-zinc-900 dark:text-zinc-100 mb-0.5 tracking-tight flex items-center">
+                            Coins: {localUserData?.coins || 0}
+                        </h4>
+                        <p className="text-xs text-zinc-500 mb-2">{(localUserData?.coins || 0) > 0 ? "Check your balance" : "Deposit or earn coins"}</p>
+                        <span className="px-3 py-1 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-bold text-[10px] rounded-full shadow-sm">{(localUserData?.coins || 0) > 0 ? "Check Coins" : "Deposit or Earn"}</span>
+                    </div>
+                    <CircleDollarSign className="w-10 h-10 text-amber-500 drop-shadow-sm opacity-90"/>
+                </div>
+            </div>
+
+            {/* Quick Links Row 2 */}
+            <div className="bg-white dark:bg-zinc-900 rounded-[24px] shadow-sm p-4 py-5 md:p-5 md:py-6">
+                <div className="grid grid-cols-3 gap-1">
+                    <div onClick={() => navigate('/deposit')} className="flex flex-col items-center justify-center cursor-pointer active:scale-95 transition-transform group text-center">
+                        <Wallet className="w-5 h-5 md:w-6 md:h-6 mb-2 text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors" />
+                        <span className="text-[10px] md:text-[11px] font-medium text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-zinc-100">Deposit</span>
+                    </div>
+                    <div onClick={() => navigate('/bonus')} className="flex flex-col items-center justify-center cursor-pointer active:scale-95 transition-transform group text-center">
+                        <Gift className="w-5 h-5 md:w-6 md:h-6 mb-2 text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors" />
+                        <span className="text-[10px] md:text-[11px] font-medium text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-zinc-100">Bonus</span>
+                    </div>
+                    <div onClick={() => navigate('/help-center')} className="flex flex-col items-center justify-center cursor-pointer active:scale-95 transition-transform group text-center">
+                        <Headphones className="w-5 h-5 md:w-6 md:h-6 mb-2 text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors" />
+                        <span className="text-[10px] md:text-[11px] leading-tight font-medium text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-zinc-100">Help<br/>Center</span>
+                    </div>
+                </div>
+            </div>
 
           {/* Admin Panel */}
           {isAdmin && (
@@ -349,35 +485,26 @@ const Profile: React.FC<{ userData: UserProfile | null }> = ({
               </div>
           </div>
 
-          {/* Affiliate Grid */}
-          {localUserData?.isAffiliate && (
-            <div className="grid grid-cols-2 gap-4">
-                <div onClick={() => navigate('/affiliate')} className="p-5 bg-white dark:bg-zinc-900 rounded-[24px] shadow-sm border border-emerald-100 dark:border-emerald-900/30 text-center cursor-pointer active:scale-[0.98] transition-transform">
-                    <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 mb-0.5">৳ {localUserData.walletBalance || 0}</p>
-                    <p className="text-[13px] text-zinc-500 font-medium">Wallet Balance</p>
-                </div>
-                <div onClick={() => navigate('/affiliate')} className="p-5 bg-white dark:bg-zinc-900 rounded-[24px] shadow-sm border border-emerald-100 dark:border-emerald-900/30 text-center cursor-pointer active:scale-[0.98] transition-transform">
-                    <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 mb-0.5">৳ {localUserData.totalEarned || 0}</p>
-                    <p className="text-[13px] text-zinc-500 font-medium">Total Earned</p>
-                </div>
-            </div>
-          )}
+          </div>
 
-          {/* Menu Items */}
+          <div className="lg:col-span-7 space-y-5">
+              {/* Menu Items */}
           <div id="profile-menu" className="bg-white dark:bg-zinc-900 rounded-[32px] overflow-hidden shadow-sm p-2">
-              <ProfileMenuItem icon={<ShoppingBag className="w-5 h-5 text-zinc-500 dark:text-zinc-400" />} label="My Orders" onClick={() => navigate('/orders')} />
-              <ProfileMenuItem icon={<Heart className="w-5 h-5 text-zinc-500 dark:text-zinc-400" />} label="My Wishlist" onClick={() => navigate('/wishlist')} />
-              <ProfileMenuItem icon={<FileText className="w-5 h-5 text-zinc-500 dark:text-zinc-400" />} label="Blog" onClick={() => navigate('/blog')} />
-              <ProfileMenuItem icon={<Headphones className="w-5 h-5 text-zinc-500 dark:text-zinc-400" />} label="Help Center" onClick={() => navigate('/help-center')} />
-              <ProfileMenuItem icon={<Lock className="w-5 h-5 text-zinc-500 dark:text-zinc-400" />} label="Privacy Policy" onClick={() => navigate('/privacy')} />
-              <ProfileMenuItem icon={<ShieldCheck className="w-5 h-5 text-zinc-500 dark:text-zinc-400" />} label="Terms & Conditions" onClick={() => navigate('/terms')} />
-              <ProfileMenuItem icon={<Info className="w-5 h-5 text-zinc-500 dark:text-zinc-400" />} label="About Us" onClick={() => navigate('/about')} />
-              <ProfileMenuItem icon={<Mail className="w-5 h-5 text-zinc-500 dark:text-zinc-400" />} label="Contact Us" onClick={() => navigate('/contact')} />
+              <div className="lg:grid lg:grid-cols-2 lg:gap-2">
+                  <ProfileMenuItem icon={<ShoppingBag className="w-5 h-5 text-zinc-500 dark:text-zinc-400" />} label="My Orders" onClick={() => navigate('/orders')} />
+                  <ProfileMenuItem icon={<Heart className="w-5 h-5 text-zinc-500 dark:text-zinc-400" />} label="My Wishlist" onClick={() => navigate('/wishlist')} />
+                  <ProfileMenuItem icon={<FileText className="w-5 h-5 text-zinc-500 dark:text-zinc-400" />} label="Blog" onClick={() => navigate('/blog')} />
+                  <ProfileMenuItem icon={<Headphones className="w-5 h-5 text-zinc-500 dark:text-zinc-400" />} label="Help Center" onClick={() => navigate('/help-center')} />
+                  <ProfileMenuItem icon={<Lock className="w-5 h-5 text-zinc-500 dark:text-zinc-400" />} label="Privacy Policy" onClick={() => navigate('/privacy')} />
+                  <ProfileMenuItem icon={<ShieldCheck className="w-5 h-5 text-zinc-500 dark:text-zinc-400" />} label="Terms & Conditions" onClick={() => navigate('/terms')} />
+                  <ProfileMenuItem icon={<Info className="w-5 h-5 text-zinc-500 dark:text-zinc-400" />} label="About Us" onClick={() => navigate('/about')} />
+                  <ProfileMenuItem icon={<Mail className="w-5 h-5 text-zinc-500 dark:text-zinc-400" />} label="Contact Us" onClick={() => navigate('/contact')} />
+              </div>
               <div 
                   onClick={() => {
                       window.dispatchEvent(new CustomEvent('openAccountCenter'));
                   }}
-                  className="flex items-center justify-between p-4 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors active:bg-zinc-100 dark:active:bg-zinc-800"
+                  className="flex items-center justify-between p-4 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors active:bg-zinc-100 dark:active:bg-zinc-800 mt-2 rounded-xl"
               >
                   <div className="flex items-center space-x-4">
                       <div className="w-10 h-10 rounded-full bg-red-50 dark:bg-red-900/10 flex items-center justify-center shadow-sm">
@@ -389,7 +516,21 @@ const Profile: React.FC<{ userData: UserProfile | null }> = ({
               </div>
           </div>
 
+          </div>
       </div>
+
+      {/* Recommended Products */}
+      {recommendedProducts.length > 0 && (
+        <div className="max-w-lg lg:max-w-6xl mx-auto px-5 mt-8 pb-10">
+          <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 mb-6 tracking-tight">You Might Also Like</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 lg:gap-6 gap-4 xl:grid-cols-5 2xl:grid-cols-6">
+            {recommendedProducts.map((product: any) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        </div>
+      )}
+
     </div>
     </TourProvider>
   );

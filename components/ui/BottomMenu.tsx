@@ -245,7 +245,7 @@ const BottomMenu = () => {
   return (
     <div
       ref={containerRef}
-      className={cn("fixed bottom-0 left-0 w-full z-[50] flex flex-col items-center")}
+      className={cn("fixed bottom-0 left-0 w-full z-[50] flex flex-col items-center md:hidden")}
     >
       {/* Hidden for measurement */}
       <div
@@ -302,8 +302,10 @@ const BottomMenu = () => {
           >
             <div
               ref={elementRef}
-              className="rounded-[24px] bg-white/90 dark:bg-zinc-950/90 backdrop-blur-xl border border-zinc-200/50 dark:border-zinc-800/50"
+              className="rounded-[24px] bg-blue-50/20 dark:bg-black/20 backdrop-blur-3xl backdrop-saturate-150 border border-white/60 dark:border-white/10 relative overflow-hidden shadow-[0_8px_32px_0_rgba(0,10,40,0.1)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.4)]"
             >
+              <div className="absolute inset-0 bg-gradient-to-tr from-white/20 via-white/5 to-white/40 dark:from-white/5 dark:via-transparent dark:to-white/10 pointer-events-none" />
+              <div className="absolute inset-0 rounded-[24px] shadow-[inset_0_1px_3px_rgba(255,255,255,0.8)] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)] pointer-events-none" />
               <AnimatePresence initial={false} mode="popLayout">
                 <motion.div
                   key={view}
@@ -336,7 +338,10 @@ const BottomMenu = () => {
       </AnimatePresence>
 
       {/* Toolbar */}
-      <div className="flex items-center justify-around w-full bg-white/70 dark:bg-zinc-950/70 backdrop-blur-xl border-t border-zinc-200/50 dark:border-zinc-800/50 px-2 py-2 pb-safe shadow-[0_-10px_40px_-5px_rgba(0,0,0,0.05)] dark:shadow-[0_-10px_40px_-5px_rgba(0,0,0,0.2)] pb-4 md:pb-2">
+      <div className="w-[calc(100%-2rem)] mx-4 mb-4 rounded-3xl flex items-center justify-around bg-blue-50/20 dark:bg-black/20 backdrop-blur-3xl border border-white/60 dark:border-white/10 px-2 py-2 shadow-[0_8px_32px_0_rgba(0,10,40,0.1)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.4)] relative pb-2 overflow-hidden backdrop-saturate-150">
+        <div className="absolute inset-0 bg-gradient-to-tr from-white/20 via-white/5 to-white/40 dark:from-white/5 dark:via-transparent dark:to-white/10 pointer-events-none" />
+        <div className="absolute inset-0 rounded-3xl shadow-[inset_0_1px_3px_rgba(255,255,255,0.8)] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)] pointer-events-none" />
+        
         {MAIN_NAV.map(({ icon: Icon, name }) => {
           const isActive = view === name || (name === 'home' && location.pathname === '/');
           return (
@@ -361,7 +366,7 @@ const BottomMenu = () => {
               }}
             >
               {isActive && (
-                 <motion.div layoutId="nav-pill" className="absolute inset-0 bg-zinc-100/80 dark:bg-zinc-800/80 rounded-2xl -z-10" />
+                 <motion.div layoutId="nav-pill" className="absolute inset-0 bg-white/40 dark:bg-white/10 rounded-2xl -z-10 shadow-[inset_0_0_10px_rgba(255,255,255,0.5)] dark:shadow-[inset_0_0_5px_rgba(255,255,255,0.1)]" />
               )}
               <HugeiconsIcon
                 icon={Icon}

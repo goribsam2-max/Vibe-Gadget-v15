@@ -16,7 +16,7 @@ import { motion } from "framer-motion";
 import Icon from "../../components/Icon";
 import Modal from "../../components/ui/modal-drop";
 
-const ManageCoupons: React.FC = () => {
+const ManagePromoCodes: React.FC = () => {
   const navigate = useNavigate();
   const notify = useNotify();
   const [coupons, setCoupons] = useState<any[]>([]);
@@ -39,12 +39,15 @@ const ManageCoupons: React.FC = () => {
   const fetchCoupons = async () => {
     setLoading(true);
     try {
-      const q = query(collection(db, "coupons"), orderBy("createdAt", "desc"));
+      const q = query(
+        collection(db, "promo_codes"),
+        orderBy("createdAt", "desc"),
+      );
       const snap = await getDocs(q);
       setCoupons(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     } catch (err) {
       console.error(err);
-      notify("Failed to load coupons", "error");
+      notify("Failed to load promo codes", "error");
     }
     setLoading(false);
   };
@@ -54,18 +57,20 @@ const ManageCoupons: React.FC = () => {
     if (!newCoupon.code || !newCoupon.discountInfo) return;
 
     try {
-      await addDoc(collection(db, "coupons"), {
+      await addDoc(collection(db, "promo_codes"), {
         code: newCoupon.code.toUpperCase(),
         discount: Number(newCoupon.discountInfo),
         type: newCoupon.type,
         maxUses: Number(newCoupon.maxUses),
         minOrderAmount: Number(newCoupon.minOrderAmount),
-        expiresAt: newCoupon.expiresAt ? new Date(newCoupon.expiresAt).getTime() : null,
+        expiresAt: newCoupon.expiresAt
+          ? new Date(newCoupon.expiresAt).getTime()
+          : null,
         usedCount: 0,
         isActive: true,
         createdAt: Date.now(),
       });
-      notify("Coupon added successfully", "success");
+      notify("Promo code added", "success");
       setShowAddForm(false);
       setNewCoupon({
         code: "",
@@ -77,17 +82,17 @@ const ManageCoupons: React.FC = () => {
       });
       fetchCoupons();
     } catch (err) {
-      notify("Error adding coupon", "error");
+      notify("Error adding promo code", "error");
     }
   };
 
   const handleDelete = async (id: string) => {
     try {
-      await deleteDoc(doc(db, "coupons", id));
-      notify("Coupon removed", "success");
+      await deleteDoc(doc(db, "promo_codes", id));
+      notify("Promo code removed", "success");
       fetchCoupons();
     } catch (err) {
-      notify("Error deleting coupon", "error");
+      notify("Error deleting promo code", "error");
     }
   };
 
@@ -98,10 +103,10 @@ const ManageCoupons: React.FC = () => {
         <div className="flex items-center space-x-6">
           <div>
             <h1 className="text-xl md:text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 mb-1.5 text-shine">
-              Promotions
+              Promo Codes
             </h1>
             <p className="text-zinc-400 text-[10px] md:text-xs font-bold tracking-normal ">
-              Discount Management
+              Discount Codes for Checkout
             </p>
           </div>
         </div>
@@ -109,114 +114,114 @@ const ManageCoupons: React.FC = () => {
           onClick={() => setShowAddForm(!showAddForm)}
           className={`px-6 py-3 rounded-full font-bold text-[10px] tracking-normal shadow-lg transition-all active:scale-95 border hover-tilt hover-glow ${showAddForm ? "bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700" : "bg-zinc-900 text-white border-zinc-900 hover:bg-zinc-900 dark:bg-zinc-100 dark:text-zinc-900"}`}
         >
-          {showAddForm ? "Cancel" : "New Coupon"}
+          {showAddForm ? "Cancel" : "New Promo Code"}
         </button>
       </div>
 
       <Modal
         isOpen={showAddForm}
         onClose={() => setShowAddForm(false)}
-        title="Create Discount Code"
+        title="Create Promo Code"
         animationType="scale"
       >
         <form onSubmit={handleAddCoupon} className="w-full space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
             <div>
               <label className="text-xs font-bold text-zinc-600 dark:text-zinc-400 mb-2 block">
-                Coupon Code
+                Promo Code
               </label>
               <input
-                      type="text"
-                      value={newCoupon.code || ""}
-                      onChange={(e) =>
-                        setNewCoupon({
-                          ...newCoupon,
-                          code: e.target.value.toUpperCase(),
-                        })
-                      }
-                      placeholder="e.g. SUMMER20"
-                      className="w-full bg-zinc-50 dark:bg-zinc-800 p-4 rounded-2xl text-sm outline-none border border-zinc-200 dark:border-zinc-700 focus:border-black transition-colors"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-zinc-600 dark:text-zinc-400 mb-2 block">
-                      Discount Amount
-                    </label>
-                    <div className="flex space-x-2">
-                      <input
-                        type="number"
-                        value={newCoupon.discountInfo || ""}
-                        onChange={(e) =>
-                          setNewCoupon({ ...newCoupon, discountInfo: e.target.value })
-                        }
-                        placeholder="Amount"
-                        className="w-full bg-zinc-50 dark:bg-zinc-800 p-4 rounded-l-2xl rounded-r-none text-sm outline-none border border-zinc-200 dark:border-zinc-700 focus:border-black transition-colors"
-                        required
-                      />
-                      <select
-                        value={newCoupon.type}
-                        onChange={(e) =>
-                          setNewCoupon({ ...newCoupon, type: e.target.value })
-                        }
-                        className="bg-zinc-50 dark:bg-zinc-800 p-4 rounded-r-2xl rounded-l-none text-sm outline-none border border-zinc-200 dark:border-zinc-700 border-l-0 cursor-pointer"
-                      >
-                        <option value="percent">% Off</option>
-                        <option value="fixed">৳ Off</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="text-xs font-bold text-zinc-600 dark:text-zinc-400 mb-2 block">
-                      Max Uses
-                    </label>
-                    <input
-                      type="number"
-                      value={newCoupon.maxUses || ""}
-                      onChange={(e) =>
-                        setNewCoupon({
-                          ...newCoupon,
-                          maxUses: Number(e.target.value),
-                        })
-                      }
-                      className="w-full bg-zinc-50 dark:bg-zinc-800 p-4 rounded-2xl text-sm outline-none border border-zinc-200 dark:border-zinc-700 focus:border-black transition-colors"
-                      required
-                    />
-                  </div>
-                  <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6 mt-4">
-                    <div>
-                      <label className="text-xs font-bold text-zinc-600 dark:text-zinc-400 mb-2 block">
-                        Min Order Amount (৳)
-                      </label>
-                      <input
-                        type="number"
-                        value={newCoupon.minOrderAmount || ""}
-                        onChange={(e) =>
-                          setNewCoupon({
-                            ...newCoupon,
-                            minOrderAmount: Number(e.target.value),
-                          })
-                        }
-                        className="w-full bg-zinc-50 dark:bg-zinc-800 p-4 rounded-2xl text-sm outline-none border border-zinc-200 dark:border-zinc-700 focus:border-black transition-colors"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-zinc-600 dark:text-zinc-400 mb-2 block">
-                        Expiry Date
-                      </label>
-                      <input
-                        type="date"
-                        value={newCoupon.expiresAt || ""}
-                        onChange={(e) =>
-                          setNewCoupon({
-                            ...newCoupon,
-                            expiresAt: e.target.value,
-                          })
-                        }
-                        className="w-full bg-zinc-50 dark:bg-zinc-800 p-4 rounded-2xl text-sm outline-none border border-zinc-200 dark:border-zinc-700 focus:border-black transition-colors"
-                      />
-                    </div>
-                  </div>
+                type="text"
+                value={newCoupon.code || ""}
+                onChange={(e) =>
+                  setNewCoupon({
+                    ...newCoupon,
+                    code: e.target.value.toUpperCase(),
+                  })
+                }
+                placeholder="e.g. SUMMER20"
+                className="w-full bg-zinc-50 dark:bg-zinc-800 p-4 rounded-2xl text-sm outline-none border border-zinc-200 dark:border-zinc-700 focus:border-black transition-colors"
+                required
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-zinc-600 dark:text-zinc-400 mb-2 block">
+                Discount Amount
+              </label>
+              <div className="flex space-x-2">
+                <input
+                  type="number"
+                  value={newCoupon.discountInfo || ""}
+                  onChange={(e) =>
+                    setNewCoupon({ ...newCoupon, discountInfo: e.target.value })
+                  }
+                  placeholder="Amount"
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 p-4 rounded-l-2xl rounded-r-none text-sm outline-none border border-zinc-200 dark:border-zinc-700 focus:border-black transition-colors"
+                  required
+                />
+                <select
+                  value={newCoupon.type}
+                  onChange={(e) =>
+                    setNewCoupon({ ...newCoupon, type: e.target.value })
+                  }
+                  className="bg-zinc-50 dark:bg-zinc-800 p-4 rounded-r-2xl rounded-l-none text-sm outline-none border border-zinc-200 dark:border-zinc-700 border-l-0 cursor-pointer"
+                >
+                  <option value="percent">% Off</option>
+                  <option value="fixed">৳ Off</option>
+                </select>
+              </div>
+            </div>
+            <div className="md:col-span-2">
+              <label className="text-xs font-bold text-zinc-600 dark:text-zinc-400 mb-2 block">
+                Max Uses
+              </label>
+              <input
+                type="number"
+                value={newCoupon.maxUses || ""}
+                onChange={(e) =>
+                  setNewCoupon({
+                    ...newCoupon,
+                    maxUses: Number(e.target.value),
+                  })
+                }
+                className="w-full bg-zinc-50 dark:bg-zinc-800 p-4 rounded-2xl text-sm outline-none border border-zinc-200 dark:border-zinc-700 focus:border-black transition-colors"
+                required
+              />
+            </div>
+            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6 mt-4">
+              <div>
+                <label className="text-xs font-bold text-zinc-600 dark:text-zinc-400 mb-2 block">
+                  Min Order Amount (৳)
+                </label>
+                <input
+                  type="number"
+                  value={newCoupon.minOrderAmount || ""}
+                  onChange={(e) =>
+                    setNewCoupon({
+                      ...newCoupon,
+                      minOrderAmount: Number(e.target.value),
+                    })
+                  }
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 p-4 rounded-2xl text-sm outline-none border border-zinc-200 dark:border-zinc-700 focus:border-black transition-colors"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-zinc-600 dark:text-zinc-400 mb-2 block">
+                  Expiry Date
+                </label>
+                <input
+                  type="date"
+                  value={newCoupon.expiresAt || ""}
+                  onChange={(e) =>
+                    setNewCoupon({
+                      ...newCoupon,
+                      expiresAt: e.target.value,
+                    })
+                  }
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 p-4 rounded-2xl text-sm outline-none border border-zinc-200 dark:border-zinc-700 focus:border-black transition-colors"
+                />
+              </div>
+            </div>
             <div className="md:col-span-2 mt-4 flex items-end justify-end gap-3">
               <button
                 type="button"
@@ -260,7 +265,9 @@ const ManageCoupons: React.FC = () => {
                   </div>
                   <div className="text-xs text-neutral-500 dark:text-neutral-400 font-medium flex gap-2 items-center mt-1">
                     <span className="text-zinc-800 dark:text-zinc-200 dark:text-zinc-700 dark:text-zinc-300 font-bold">
-                      {coupon.type === "percent" ? `${coupon.discount}% OFF` : `৳${coupon.discount} OFF`}
+                      {coupon.type === "percent"
+                        ? `${coupon.discount}% OFF`
+                        : `৳${coupon.discount} OFF`}
                     </span>
                     <span>•</span>
                     <span>
@@ -284,7 +291,7 @@ const ManageCoupons: React.FC = () => {
             <div className="py-20 text-center bg-zinc-50 dark:bg-zinc-800 rounded-2xl border border-zinc-200 dark:border-zinc-700 shadow-sm text-zinc-400">
               <Icon name="ticket-alt" className="text-lg mb-4 text-zinc-300" />
               <p className="font-bold text-xs tracking-normal">
-                No active coupons
+                No active promo codes
               </p>
             </div>
           )}
@@ -294,4 +301,4 @@ const ManageCoupons: React.FC = () => {
   );
 };
 
-export default ManageCoupons;
+export default ManagePromoCodes;

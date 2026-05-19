@@ -1,23 +1,48 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth, db } from "../firebase";
-import { collection, addDoc, doc, getDoc, onSnapshot, updateDoc, arrayUnion } from "firebase/firestore";
+import {
+  collection,
+  addDoc,
+  doc,
+  getDoc,
+  onSnapshot,
+  updateDoc,
+  arrayUnion,
+} from "firebase/firestore";
 import { useNotify } from "../components/Notifications";
 import { OrderStatus } from "../types";
 import { sendOrderToTelegram } from "../services/telegram";
+import { getProductCoinReward } from "../lib/coinRewards";
 import { CustomSectionEmbed } from "../components/CustomSectionEmbed";
 import { useTheme } from "../components/ThemeContext";
 
 import { Button } from "../components/ui/button";
-import { Card, CardContent, CardHeader, CardFooter, CardTitle } from "../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardFooter,
+  CardTitle,
+} from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Checkbox } from "../components/ui/checkbox";
 import { Skeleton } from "../components/ui/skeleton";
 import {
-  CreditCard, Truck, Shield, MapPin,
-  Lock, Check, ChevronLeft, Percent, X, Smartphone, ShoppingBag
+  CreditCard,
+  Truck,
+  Shield,
+  MapPin,
+  Lock,
+  Check,
+  ChevronLeft,
+  Percent,
+  X,
+  Smartphone,
+  ShoppingBag,
+  Ticket,
 } from "lucide-react";
 import { cn } from "../lib/utils";
 
@@ -31,20 +56,38 @@ export default function CheckoutPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [userIp, setUserIp] = useState<string>("");
   const [settings, setSettings] = useState<any>(null);
+  const [userCoins, setUserCoins] = useState<number>(0);
 
   // Address
   const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
-  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(
+    null,
+  );
   const [isAddingNewAddress, setIsAddingNewAddress] = useState(false);
-  const [newAddress, setNewAddress] = useState({ name: "", phone: "", altPhone: "", address: "" });
+  const [newAddress, setNewAddress] = useState({
+    name: "",
+    phone: "",
+    altPhone: "",
+    address: "",
+  });
 
   // Payment
   const prefMeth = localStorage.getItem("vibe_preferred_payment");
-  const defaultBank = prefMeth === "bKash" || prefMeth === "Nagad" ? (prefMeth.toLowerCase() as "bkash" | "nagad") : null;
-  const defaultPaymentType = prefMeth === "Cash on Delivery" ? "cod" : defaultBank ? "advance" : "cod";
-  const [paymentType, setPaymentType] = useState<"cod" | "advance" | null>(defaultPaymentType);
-  const [advanceType, setAdvanceType] = useState<"full" | "delivery" | null>(null);
-  const [bankingMethod, setBankingMethod] = useState<"bkash" | "nagad" | null>(defaultBank);
+  const defaultBank =
+    prefMeth === "bKash" || prefMeth === "Nagad"
+      ? (prefMeth.toLowerCase() as "bkash" | "nagad")
+      : null;
+  const defaultPaymentType =
+    prefMeth === "Cash on Delivery" ? "cod" : defaultBank ? "advance" : "cod";
+  const [paymentType, setPaymentType] = useState<
+    "cod" | "advance" | "vgcoin" | null
+  >(defaultPaymentType);
+  const [advanceType, setAdvanceType] = useState<"full" | "delivery" | null>(
+    null,
+  );
+  const [bankingMethod, setBankingMethod] = useState<"bkash" | "nagad" | null>(
+    defaultBank,
+  );
   const [bankingAccountName, setBankingAccountName] = useState("");
   const [bankingTrxId, setBankingTrxId] = useState("");
 
@@ -56,16 +99,52 @@ export default function CheckoutPage() {
   const [giftNote, setGiftNote] = useState("");
   const [affiliateRef, setAffiliateRef] = useState<string | null>(null);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
+  const [showCouponsModal, setShowCouponsModal] = useState(false);
+  const [claimedCouponsList, setClaimedCouponsList] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchCoupons = async () => {
+      if (!auth.currentUser) return;
+      const userSnap = await import("firebase/firestore").then((m) =>
+        m.getDoc(m.doc(db, "users", auth.currentUser!.uid)),
+      );
+      if (userSnap.exists()) {
+        const claimedIds = userSnap.data().claimedCoupons || [];
+        if (claimedIds.length > 0) {
+          const { collection, query, documentId, where, getDocs } =
+            await import("firebase/firestore");
+          const chunked = claimedIds.slice(0, 10);
+          const q = query(
+            collection(db, "coupons"),
+            where(documentId(), "in", chunked),
+          );
+          const snap = await getDocs(q);
+          setClaimedCouponsList(
+            snap.docs.map((d) => ({ id: d.id, ...d.data() })),
+          );
+        }
+      }
+    };
+    fetchCoupons();
+  }, []);
 
   useEffect(() => {
     const ref = localStorage.getItem("affiliateRef");
     if (ref) {
       setAffiliateRef(ref);
       setCouponCode(ref);
-      setAppliedPromo({ id: "affiliate", type: "percent", discount: 5, code: "REF-LINK" });
+      setAppliedPromo({
+        id: "affiliate",
+        type: "percent",
+        discount: 5,
+        code: "REF-LINK",
+      });
     }
 
-    fetch("https://api.ipify.org?format=json").then(r => r.json()).then(d => setUserIp(d.ip)).catch(() => setUserIp("Unavailable"));
+    fetch("https://api.ipify.org?format=json")
+      .then((r) => r.json())
+      .then((d) => setUserIp(d.ip))
+      .catch(() => setUserIp("Unavailable"));
 
     const unsubSettings = onSnapshot(doc(db, "settings", "platform"), (doc) => {
       if (doc.exists()) setSettings(doc.data());
@@ -82,9 +161,11 @@ export default function CheckoutPage() {
       getDoc(doc(db, "users", auth.currentUser.uid)).then((snap) => {
         if (snap.exists()) {
           const data = snap.data();
+          setUserCoins(data.coins || 0);
           if (data.addresses && Array.isArray(data.addresses)) {
             setSavedAddresses(data.addresses);
-            if (data.addresses.length > 0) setSelectedAddressId(data.addresses[0].id);
+            if (data.addresses.length > 0)
+              setSelectedAddressId(data.addresses[0].id);
           } else {
             setIsAddingNewAddress(true);
           }
@@ -92,7 +173,9 @@ export default function CheckoutPage() {
         setIsLoading(false);
       });
     } else {
-      const localAddresses = JSON.parse(localStorage.getItem("vibe_shipping_addresses_v2") || "[]");
+      const localAddresses = JSON.parse(
+        localStorage.getItem("vibe_shipping_addresses_v2") || "[]",
+      );
       setSavedAddresses(localAddresses);
       if (localAddresses.length > 0) setSelectedAddressId(localAddresses[0].id);
       else setIsAddingNewAddress(true);
@@ -105,7 +188,8 @@ export default function CheckoutPage() {
   const deliveryFee = settings?.deliveryCharge || 120;
   let discount = 0;
   if (appliedPromo) {
-    if (appliedPromo.type === "percent") discount = Math.round(subtotal * (appliedPromo.discount / 100));
+    if (appliedPromo.type === "percent")
+      discount = Math.round(subtotal * (appliedPromo.discount / 100));
     else discount = appliedPromo.discount;
   }
   const total = subtotal + deliveryFee - discount;
@@ -114,22 +198,34 @@ export default function CheckoutPage() {
     if (!newAddress.name || !newAddress.phone || !newAddress.address) {
       return notify("Please complete all required fields.", "error");
     }
-    const newAddrObj = { id: Math.random().toString(36).substring(7), ...newAddress };
+    const newAddrObj = {
+      id: Math.random().toString(36).substring(7),
+      ...newAddress,
+    };
     if (auth.currentUser) {
       try {
         const { setDoc } = await import("firebase/firestore");
-        await setDoc(doc(db, "users", auth.currentUser.uid), { addresses: arrayUnion(newAddrObj) }, { merge: true });
+        await setDoc(
+          doc(db, "users", auth.currentUser.uid),
+          { addresses: arrayUnion(newAddrObj) },
+          { merge: true },
+        );
         setSavedAddresses([...savedAddresses, newAddrObj]);
         setSelectedAddressId(newAddrObj.id);
         setIsAddingNewAddress(false);
         notify("Address saved.", "success");
-      } catch (e) { notify("Error saving address.", "error"); }
+      } catch (e) {
+        notify("Error saving address.", "error");
+      }
     } else {
       const newAddrs = [...savedAddresses, newAddrObj];
       setSavedAddresses(newAddrs);
       setSelectedAddressId(newAddrObj.id);
       setIsAddingNewAddress(false);
-      localStorage.setItem("vibe_shipping_addresses_v2", JSON.stringify(newAddrs));
+      localStorage.setItem(
+        "vibe_shipping_addresses_v2",
+        JSON.stringify(newAddrs),
+      );
     }
   };
 
@@ -137,19 +233,33 @@ export default function CheckoutPage() {
     setCouponError("");
     if (!couponCode.trim()) return;
     try {
-      const { query, where, getDocs, collection } = await import("firebase/firestore");
-      const q = query(collection(db, "coupons"), where("code", "==", couponCode.trim().toUpperCase()));
+      const { query, where, getDocs, collection } =
+        await import("firebase/firestore");
+      // For typed-in codes, search promo_codes collection
+      const q = query(
+        collection(db, "promo_codes"),
+        where("code", "==", couponCode.trim().toUpperCase()),
+      );
       const snap = await getDocs(q);
-      if (snap.empty) setCouponError("Invalid coupon");
+      if (snap.empty) setCouponError("Invalid promo code");
       else {
         const c = snap.docs[0].data();
-        if (!c.isActive) setCouponError("Coupon inactive");
-        else {
-          setAppliedPromo({ id: snap.docs[0].id, ...c });
-          notify("Coupon applied!", "success");
+        if (!c.isActive) {
+          setCouponError("Promo code inactive");
+        } else if (c.expiresAt && c.expiresAt < Date.now()) {
+          setCouponError("Promo code expired");
+        } else if (c.minOrderAmount && subtotal < c.minOrderAmount) {
+          setCouponError(`Minimum order amount is ৳${c.minOrderAmount}`);
+        } else if (c.maxUses && c.usedCount >= c.maxUses) {
+          setCouponError("Promo code fully used");
+        } else {
+          setAppliedPromo({ id: snap.docs[0].id, ...c, isVoucher: false });
+          notify("Promo code applied!", "success");
         }
       }
-    } catch (e) { setCouponError("Error verifying coupon"); }
+    } catch (e) {
+      setCouponError("Error verifying promo code");
+    }
   };
 
   const removePromo = () => {
@@ -158,7 +268,9 @@ export default function CheckoutPage() {
   };
 
   const placeOrder = async () => {
-    const activeAddress = savedAddresses.find((a) => a.id === selectedAddressId);
+    const activeAddress = savedAddresses.find(
+      (a) => a.id === selectedAddressId,
+    );
     if (!activeAddress) return notify("Address required", "error");
 
     setIsLoading(true);
@@ -168,15 +280,30 @@ export default function CheckoutPage() {
       let trxStr = "";
 
       if (paymentType === "advance") {
-        paymentStr = bankingMethod === "bkash" ? "bKash Mobile Banking" : "Nagad Mobile Banking";
-        paymentOptStr = advanceType === "full" ? "Full Payment" : "Delivery Fee Advanced";
+        paymentStr =
+          bankingMethod === "bkash"
+            ? "bKash Mobile Banking"
+            : "Nagad Mobile Banking";
+        paymentOptStr =
+          advanceType === "full" ? "Full Payment" : "Delivery Fee Advanced";
         trxStr = bankingTrxId.trim();
+      } else if (paymentType === "vgcoin") {
+        paymentStr = "VG Coins";
+        paymentOptStr =
+          advanceType === "full" ? "Full Payment" : "Delivery Fee Advanced";
+        trxStr = `VGCOIN_${Date.now()}`;
       }
 
       const orderData = {
         userId: auth.currentUser?.uid || "guest",
         customerName: activeAddress.name,
-        items: items.map((i) => ({ productId: i.id, quantity: i.quantity, priceAtPurchase: i.price, name: i.name, image: i.image })),
+        items: items.map((i) => ({
+          productId: i.id,
+          quantity: i.quantity,
+          priceAtPurchase: i.price,
+          name: i.name,
+          image: i.image,
+        })),
         total: total,
         subTotal: subtotal,
         discount: discount,
@@ -203,16 +330,67 @@ export default function CheckoutPage() {
       if (orderData.affiliateRef) {
         try {
           const { increment } = await import("firebase/firestore");
-          await updateDoc(doc(db, "users", orderData.affiliateRef), { walletBalance: increment(50) });
-          await addDoc(collection(db, "affiliates_log"), { affiliateId: orderData.affiliateRef, orderId: docRef.id, customerName: activeAddress.name, commission: 50, createdAt: Date.now() });
+          await updateDoc(doc(db, "users", orderData.affiliateRef), {
+            walletBalance: increment(50),
+          });
+          await addDoc(collection(db, "affiliates_log"), {
+            affiliateId: orderData.affiliateRef,
+            orderId: docRef.id,
+            customerName: activeAddress.name,
+            commission: 50,
+            createdAt: Date.now(),
+          });
         } catch (e) {}
       }
 
       if (appliedPromo && appliedPromo.id !== "affiliate") {
         try {
           const { increment, arrayUnion } = await import("firebase/firestore");
-          await updateDoc(doc(db, "coupons", appliedPromo.id), { usedCount: increment(1), usedIPs: arrayUnion(userIp) });
+          const collectionName = appliedPromo.isVoucher
+            ? "coupons"
+            : "promo_codes";
+          await updateDoc(doc(db, collectionName, appliedPromo.id), {
+            usedCount: increment(1),
+            usedIPs: arrayUnion(userIp),
+          });
         } catch (e) {}
+      }
+
+      if (paymentType === "vgcoin" && auth.currentUser) {
+        try {
+          const { increment } = await import("firebase/firestore");
+          const coinCost = advanceType === "full" ? total : deliveryFee;
+          const { handleCoinDeductionWithExpiry } = await import("../lib/coinExpiry");
+          await handleCoinDeductionWithExpiry(auth.currentUser.uid, coinCost);
+        } catch (e) {
+          console.error("Failed to deduct coins", e);
+        }
+      }
+
+      // Grant coins for eligible products
+      if (auth.currentUser) {
+        let totalCoinsEarned = 0;
+        for (const i of items) {
+          const reward = getProductCoinReward(i.id) * i.quantity;
+          totalCoinsEarned += reward;
+        }
+        if (totalCoinsEarned > 0) {
+          try {
+            const { increment, arrayUnion } = await import("firebase/firestore");
+            const expiryAt = Date.now() + (7 * 24 * 60 * 60 * 1000); // 7 days
+            await updateDoc(doc(db, "users", auth.currentUser.uid), {
+              coins: increment(totalCoinsEarned),
+              coinBatches: arrayUnion({
+                  id: Date.now().toString(),
+                  amount: totalCoinsEarned,
+                  expiresAt: expiryAt,
+                  type: "reward"
+              })
+            });
+          } catch (e) {
+            console.error("Failed to add reward coins", e);
+          }
+        }
       }
 
       await sendOrderToTelegram({ ...orderData, id: docRef.id });
@@ -230,7 +408,15 @@ export default function CheckoutPage() {
     if (step === 2) {
       if (paymentType === "cod") return true;
       if (paymentType === "advance") {
-        return !!bankingMethod && !!advanceType && !!bankingAccountName.trim() && !!bankingTrxId.trim();
+        return (
+          !!bankingMethod &&
+          !!advanceType &&
+          !!bankingAccountName.trim() &&
+          !!bankingTrxId.trim()
+        );
+      }
+      if (paymentType === "vgcoin") {
+        return !!advanceType;
       }
       return false;
     }
@@ -264,8 +450,6 @@ export default function CheckoutPage() {
   return (
     <div className="w-full min-h-screen bg-zinc-50 dark:bg-[#000000] font-inter">
       <div className="max-w-7xl mx-auto p-6 flex flex-col gap-6">
-        
-
         {/* Progress Steps */}
         <div className="flex items-center justify-between sm:justify-start sm:gap-6 py-4 overflow-x-auto no-scrollbar mask-linear-fade pr-4">
           {[
@@ -278,16 +462,38 @@ export default function CheckoutPage() {
                 <div
                   className={cn(
                     "flex items-center justify-center w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 transition-colors",
-                    currentStep >= step ? "bg-zinc-900 dark:bg-zinc-100 border-zinc-900 dark:border-zinc-100 text-white dark:text-zinc-900" : "border-zinc-300 dark:border-zinc-700 text-zinc-400"
+                    currentStep >= step
+                      ? "bg-zinc-900 dark:bg-zinc-100 border-zinc-900 dark:border-zinc-100 text-white dark:text-zinc-900"
+                      : "border-zinc-300 dark:border-zinc-700 text-zinc-400",
                   )}
                 >
-                  {currentStep > step ? <Check className="h-3 w-3 sm:h-4 sm:w-4" /> : <Icon className="h-3 w-3 sm:h-4 sm:w-4" />}
+                  {currentStep > step ? (
+                    <Check className="h-3 w-3 sm:h-4 sm:w-4" />
+                  ) : (
+                    <Icon className="h-3 w-3 sm:h-4 sm:w-4" />
+                  )}
                 </div>
-                <span className={cn("text-[10px] sm:text-sm font-bold whitespace-nowrap", currentStep >= step ? "text-zinc-900 dark:text-zinc-100" : "text-zinc-400")}>
+                <span
+                  className={cn(
+                    "text-[10px] sm:text-sm font-bold whitespace-nowrap",
+                    currentStep >= step
+                      ? "text-zinc-900 dark:text-zinc-100"
+                      : "text-zinc-400",
+                  )}
+                >
                   {label}
                 </span>
               </div>
-              {index < 2 && <div className={cn("w-4 sm:w-8 h-0.5", currentStep > step ? "bg-zinc-100 dark:bg-zinc-8000" : "bg-zinc-200 dark:bg-zinc-800")} />}
+              {index < 2 && (
+                <div
+                  className={cn(
+                    "w-4 sm:w-8 h-0.5",
+                    currentStep > step
+                      ? "bg-zinc-100 dark:bg-zinc-8000"
+                      : "bg-zinc-200 dark:bg-zinc-800",
+                  )}
+                />
+              )}
             </div>
           ))}
         </div>
@@ -295,13 +501,13 @@ export default function CheckoutPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2 flex flex-col gap-6">
-            
             {/* Step 1: Shipping */}
             {currentStep === 1 && (
               <Card className="rounded-3xl shadow-sm border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex flex-col gap-2">
                 <CardHeader>
                   <h2 className="text-xl font-bold flex items-center gap-2 text-zinc-900 dark:text-zinc-100">
-                    <MapPin className="h-5 w-5 text-zinc-900 dark:text-zinc-100" /> Shipping Information
+                    <MapPin className="h-5 w-5 text-zinc-900 dark:text-zinc-100" />{" "}
+                    Shipping Information
                   </h2>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-6">
@@ -313,45 +519,104 @@ export default function CheckoutPage() {
                           onClick={() => setSelectedAddressId(addr.id)}
                           className={cn(
                             "p-4 border-2 rounded-2xl cursor-pointer transition-all",
-                            selectedAddressId === addr.id ? "border-zinc-900 dark:border-zinc-100 bg-zinc-100 dark:bg-zinc-800/50 dark:bg-emerald-900/10" : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700"
+                            selectedAddressId === addr.id
+                              ? "border-zinc-900 dark:border-zinc-100 bg-zinc-100 dark:bg-zinc-800/50 dark:bg-emerald-900/10"
+                              : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700",
                           )}
                         >
                           <div className="flex items-center gap-3">
-                            <div className={cn("w-4 h-4 rounded-full border-2 flex items-center justify-center", selectedAddressId === addr.id ? "border-zinc-900 dark:border-zinc-100" : "border-zinc-300")}>
-                              {selectedAddressId === addr.id && <div className="w-2 h-2 rounded-full bg-zinc-100 dark:bg-zinc-8000" />}
+                            <div
+                              className={cn(
+                                "w-4 h-4 rounded-full border-2 flex items-center justify-center",
+                                selectedAddressId === addr.id
+                                  ? "border-zinc-900 dark:border-zinc-100"
+                                  : "border-zinc-300",
+                              )}
+                            >
+                              {selectedAddressId === addr.id && (
+                                <div className="w-2 h-2 rounded-full bg-zinc-100 dark:bg-zinc-8000" />
+                              )}
                             </div>
                             <div className="flex-1">
-                              <div className="font-bold text-zinc-900 dark:text-zinc-100">{addr.name}</div>
-                              <div className="text-sm font-medium text-zinc-500">{addr.phone}</div>
-                              <div className="text-sm mt-1 text-zinc-600 dark:text-zinc-400">{addr.address}</div>
+                              <div className="font-bold text-zinc-900 dark:text-zinc-100">
+                                {addr.name}
+                              </div>
+                              <div className="text-sm font-medium text-zinc-500">
+                                {addr.phone}
+                              </div>
+                              <div className="text-sm mt-1 text-zinc-600 dark:text-zinc-400">
+                                {addr.address}
+                              </div>
                             </div>
                           </div>
                         </div>
                       ))}
-                      <Button variant="outline" className="w-full mt-2 border-dashed" onClick={() => setIsAddingNewAddress(true)}>+ Add New Address</Button>
+                      <Button
+                        variant="outline"
+                        className="w-full mt-2 border-dashed"
+                        onClick={() => setIsAddingNewAddress(true)}
+                      >
+                        + Add New Address
+                      </Button>
                     </div>
                   )}
 
                   {(isAddingNewAddress || savedAddresses.length === 0) && (
                     <div className="flex flex-col gap-4">
-                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                         <div className="space-y-2">
-                           <Label>Full Name *</Label>
-                           <Input placeholder="E.g. John Doe" value={newAddress.name} onChange={(e) => setNewAddress({...newAddress, name: e.target.value})} />
-                         </div>
-                         <div className="space-y-2">
-                           <Label>Phone *</Label>
-                           <Input placeholder="01XXXXXXXXX" value={newAddress.phone} onChange={(e) => setNewAddress({...newAddress, phone: e.target.value})} />
-                         </div>
-                       </div>
-                       <div className="space-y-2">
-                         <Label>Detailed Address *</Label>
-                         <Input placeholder="House, Road, Block, Area..." value={newAddress.address} onChange={(e) => setNewAddress({...newAddress, address: e.target.value})} />
-                       </div>
-                       <div className="flex gap-2">
-                         <Button onClick={handleSaveAddress}>Save Address</Button>
-                         {savedAddresses.length > 0 && <Button variant="ghost" onClick={() => setIsAddingNewAddress(false)}>Cancel</Button>}
-                       </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Full Name *</Label>
+                          <Input
+                            placeholder="E.g. John Doe"
+                            value={newAddress.name}
+                            onChange={(e) =>
+                              setNewAddress({
+                                ...newAddress,
+                                name: e.target.value,
+                              })
+                            }
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Phone *</Label>
+                          <Input
+                            placeholder="01XXXXXXXXX"
+                            value={newAddress.phone}
+                            onChange={(e) =>
+                              setNewAddress({
+                                ...newAddress,
+                                phone: e.target.value,
+                              })
+                            }
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Detailed Address *</Label>
+                        <Input
+                          placeholder="House, Road, Block, Area..."
+                          value={newAddress.address}
+                          onChange={(e) =>
+                            setNewAddress({
+                              ...newAddress,
+                              address: e.target.value,
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button onClick={handleSaveAddress}>
+                          Save Address
+                        </Button>
+                        {savedAddresses.length > 0 && (
+                          <Button
+                            variant="ghost"
+                            onClick={() => setIsAddingNewAddress(false)}
+                          >
+                            Cancel
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   )}
 
@@ -359,24 +624,45 @@ export default function CheckoutPage() {
                   <div className="mt-4 border-t border-zinc-100 dark:border-zinc-800 pt-6">
                     <div className="flex flex-col gap-4">
                       <div className="flex items-center gap-3">
-                        <Checkbox id="gift" checked={isGift} onCheckedChange={(c) => setIsGift(!!c)} />
+                        <Checkbox
+                          id="gift"
+                          checked={isGift}
+                          onCheckedChange={(c) => setIsGift(!!c)}
+                        />
                         <div>
-                          <Label htmlFor="gift" className="font-bold text-base cursor-pointer">Send as a Gift</Label>
-                          <p className="text-sm text-zinc-500">Invoice will hide prices. COD disabled.</p>
+                          <Label
+                            htmlFor="gift"
+                            className="font-bold text-base cursor-pointer"
+                          >
+                            Send as a Gift
+                          </Label>
+                          <p className="text-sm text-zinc-500">
+                            Invoice will hide prices. COD disabled.
+                          </p>
                         </div>
                       </div>
                       {isGift && (
                         <div className="space-y-2 ml-7">
                           <Label>Gift Note</Label>
-                          <Input placeholder="Happy Birthday!..." value={giftNote} onChange={(e) => setGiftNote(e.target.value)} />
+                          <Input
+                            placeholder="Happy Birthday!..."
+                            value={giftNote}
+                            onChange={(e) => setGiftNote(e.target.value)}
+                          />
                         </div>
                       )}
                     </div>
                   </div>
-
                 </CardContent>
                 <CardFooter className="flex justify-end pt-4 pb-2">
-                  <Button onClick={nextStep} disabled={!validateStep(1)} size="default" className="text-xs sm:text-sm px-4 sm:px-6">Continue</Button>
+                  <Button
+                    onClick={nextStep}
+                    disabled={!validateStep(1)}
+                    size="default"
+                    className="text-xs sm:text-sm px-4 sm:px-6"
+                  >
+                    Continue
+                  </Button>
                 </CardFooter>
               </Card>
             )}
@@ -386,92 +672,282 @@ export default function CheckoutPage() {
               <Card className="rounded-3xl shadow-sm border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex flex-col gap-2">
                 <CardHeader>
                   <h2 className="text-xl font-bold flex items-center gap-2 text-zinc-900 dark:text-zinc-100">
-                    <CreditCard className="h-5 w-5 text-zinc-900 dark:text-zinc-100" /> Payment Information
+                    <CreditCard className="h-5 w-5 text-zinc-900 dark:text-zinc-100" />{" "}
+                    Payment Information
                   </h2>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-6">
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <button
                       disabled={isGift}
                       onClick={() => setPaymentType("cod")}
-                      className={cn("flex flex-col items-center gap-3 p-6 border-2 rounded-2xl transition-colors", paymentType === "cod" ? "border-zinc-900 dark:border-zinc-100 bg-zinc-100 dark:bg-zinc-800/50 dark:bg-emerald-900/10" : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700", isGift && "opacity-50 cursor-not-allowed")}
+                      className={cn(
+                        "flex flex-col items-center gap-3 p-6 border-2 rounded-2xl transition-colors",
+                        paymentType === "cod"
+                          ? "border-zinc-900 dark:border-zinc-100 bg-zinc-100 dark:bg-zinc-800/50 dark:bg-emerald-900/10"
+                          : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700",
+                        isGift && "opacity-50 cursor-not-allowed",
+                      )}
                     >
                       <Truck className="h-8 w-8 text-zinc-700 dark:text-zinc-300" />
                       <div className="text-center">
-                        <div className="font-bold text-zinc-900 dark:text-zinc-100">Cash on Delivery</div>
-                        <div className="text-xs font-semibold text-zinc-500 mt-1">Pay at doorstep</div>
+                        <div className="font-bold text-zinc-900 dark:text-zinc-100">
+                          Cash on Delivery
+                        </div>
+                        <div className="text-xs font-semibold text-zinc-500 mt-1">
+                          Pay at doorstep
+                        </div>
                       </div>
                     </button>
 
                     <button
                       onClick={() => setPaymentType("advance")}
-                      className={cn("flex flex-col items-center gap-3 p-6 border-2 rounded-2xl transition-colors", paymentType === "advance" ? "border-zinc-900 dark:border-zinc-100 bg-zinc-100 dark:bg-zinc-800/50 dark:bg-emerald-900/10" : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700")}
+                      className={cn(
+                        "flex flex-col items-center gap-3 p-6 border-2 rounded-2xl transition-colors",
+                        paymentType === "advance"
+                          ? "border-zinc-900 dark:border-zinc-100 bg-zinc-100 dark:bg-zinc-800/50 dark:bg-emerald-900/10"
+                          : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700",
+                      )}
                     >
                       <Smartphone className="h-8 w-8 text-zinc-700 dark:text-zinc-300" />
                       <div className="text-center">
-                        <div className="font-bold text-zinc-900 dark:text-zinc-100">Mobile Banking</div>
-                        <div className="text-xs font-semibold text-zinc-500 mt-1">bKash / Nagad</div>
+                        <div className="font-bold text-zinc-900 dark:text-zinc-100">
+                          Mobile Banking
+                        </div>
+                        <div className="text-xs font-semibold text-zinc-500 mt-1">
+                          bKash / Nagad
+                        </div>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => setPaymentType("vgcoin")}
+                      className={cn(
+                        "flex flex-col items-center gap-3 p-6 border-2 rounded-2xl transition-colors",
+                        paymentType === "vgcoin"
+                          ? "border-amber-500 bg-amber-50 dark:bg-amber-900/10"
+                          : "border-zinc-200 dark:border-zinc-800 hover:border-amber-300 dark:hover:border-amber-700",
+                      )}
+                    >
+                      <div className="h-8 w-8 flex items-center justify-center font-bold text-lg text-amber-500 border-2 border-amber-500 rounded-full">
+                        V
+                      </div>
+                      <div className="text-center">
+                        <div className="font-bold text-zinc-900 dark:text-zinc-100 flex items-center justify-center gap-1">
+                          Pay with VG Coin
+                        </div>
+                        <div className="text-xs font-bold text-amber-500 mt-1">
+                          Balance: {userCoins}
+                        </div>
                       </div>
                     </button>
                   </div>
 
-                  {paymentType === "advance" && (
-                    <div className="flex flex-col gap-6 mt-4 border-t border-zinc-100 dark:border-zinc-800 pt-6 animate-in fade-in slide-in-from-top-4">
+                  {paymentType === "vgcoin" && (
+                    <div className="flex flex-col gap-6 mt-4 border-t border-amber-100 dark:border-amber-900/30 pt-6 animate-in fade-in slide-in-from-top-4">
                       <div className="space-y-4">
-                        <Label className="text-base text-zinc-900 dark:text-zinc-100">Select Amount to Pay Now</Label>
+                        <Label className="text-base text-zinc-900 dark:text-zinc-100">
+                          Select Amount to Pay with Coins
+                        </Label>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <button
-                            onClick={() => setAdvanceType("delivery")}
-                            className={cn("flex items-center justify-between p-4 border-2 rounded-xl text-left", advanceType === "delivery" ? "border-zinc-900 dark:border-zinc-100 bg-zinc-100 dark:bg-zinc-800/50 dark:bg-emerald-900/10" : "border-zinc-200 dark:border-zinc-800")}
+                            onClick={() => {
+                              if (userCoins < deliveryFee) {
+                                notify(
+                                  `Not enough coins. You need ${deliveryFee} coins.`,
+                                  "error",
+                                );
+                                navigate("/deposit");
+                                return;
+                              }
+                              setAdvanceType("delivery");
+                            }}
+                            className={cn(
+                              "flex items-center justify-between p-4 border-2 rounded-xl text-left",
+                              advanceType === "delivery"
+                                ? "border-amber-500 bg-amber-50 dark:bg-amber-900/10"
+                                : "border-zinc-200 dark:border-zinc-800",
+                            )}
                           >
                             <div>
                               <div className="font-bold">Delivery Fee Only</div>
-                              <div className="text-xs text-zinc-500">Pay rest on arrival</div>
+                              <div className="text-xs text-zinc-500">
+                                Requires {deliveryFee} Coins
+                              </div>
                             </div>
-                            <div className="font-bold px-3 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg">৳{deliveryFee}</div>
+                            <div className="font-bold px-3 py-1 bg-amber-100 dark:bg-amber-900/50 text-amber-600 rounded-lg">
+                              {deliveryFee}{" "}
+                              <span className="text-[10px]">VG</span>
+                            </div>
                           </button>
                           <button
-                            onClick={() => setAdvanceType("full")}
-                            className={cn("flex items-center justify-between p-4 border-2 rounded-xl text-left", advanceType === "full" ? "border-zinc-900 dark:border-zinc-100 bg-zinc-100 dark:bg-zinc-800/50 dark:bg-emerald-900/10" : "border-zinc-200 dark:border-zinc-800")}
+                            onClick={() => {
+                              if (userCoins < total) {
+                                notify(
+                                  `Not enough coins. You need ${total} coins.`,
+                                  "error",
+                                );
+                                navigate("/deposit");
+                                return;
+                              }
+                              setAdvanceType("full");
+                            }}
+                            className={cn(
+                              "flex items-center justify-between p-4 border-2 rounded-xl text-left",
+                              advanceType === "full"
+                                ? "border-amber-500 bg-amber-50 dark:bg-amber-900/10"
+                                : "border-zinc-200 dark:border-zinc-800",
+                            )}
                           >
                             <div>
                               <div className="font-bold">Full Payment</div>
-                              <div className="text-xs text-zinc-500">Secure entire order</div>
+                              <div className="text-xs text-zinc-500">
+                                Requires {total} Coins
+                              </div>
                             </div>
-                            <div className="font-bold px-3 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg">৳{total}</div>
+                            <div className="font-bold px-3 py-1 bg-amber-100 dark:bg-amber-900/50 text-amber-600 rounded-lg">
+                              {total} <span className="text-[10px]">VG</span>
+                            </div>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {paymentType === "advance" && (
+                    <div className="flex flex-col gap-6 mt-4 border-t border-zinc-100 dark:border-zinc-800 pt-6 animate-in fade-in slide-in-from-top-4">
+                      <div className="space-y-4">
+                        <Label className="text-base text-zinc-900 dark:text-zinc-100">
+                          Select Amount to Pay Now
+                        </Label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <button
+                            onClick={() => setAdvanceType("delivery")}
+                            className={cn(
+                              "flex items-center justify-between p-4 border-2 rounded-xl text-left",
+                              advanceType === "delivery"
+                                ? "border-zinc-900 dark:border-zinc-100 bg-zinc-100 dark:bg-zinc-800/50 dark:bg-emerald-900/10"
+                                : "border-zinc-200 dark:border-zinc-800",
+                            )}
+                          >
+                            <div>
+                              <div className="font-bold">Delivery Fee Only</div>
+                              <div className="text-xs text-zinc-500">
+                                Pay rest on arrival
+                              </div>
+                            </div>
+                            <div className="font-bold px-3 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg">
+                              ৳{deliveryFee}
+                            </div>
+                          </button>
+                          <button
+                            onClick={() => setAdvanceType("full")}
+                            className={cn(
+                              "flex items-center justify-between p-4 border-2 rounded-xl text-left",
+                              advanceType === "full"
+                                ? "border-zinc-900 dark:border-zinc-100 bg-zinc-100 dark:bg-zinc-800/50 dark:bg-emerald-900/10"
+                                : "border-zinc-200 dark:border-zinc-800",
+                            )}
+                          >
+                            <div>
+                              <div className="font-bold">Full Payment</div>
+                              <div className="text-xs text-zinc-500">
+                                Secure entire order
+                              </div>
+                            </div>
+                            <div className="font-bold px-3 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg">
+                              ৳{total}
+                            </div>
                           </button>
                         </div>
                       </div>
 
                       {advanceType && (
                         <div className="space-y-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
-                          <Label className="text-base text-zinc-900 dark:text-zinc-100">Select Provider & Make Payment</Label>
+                          <Label className="text-base text-zinc-900 dark:text-zinc-100">
+                            Select Provider & Make Payment
+                          </Label>
                           <div className="flex gap-4">
-                            <button onClick={() => setBankingMethod("bkash")} className={cn("flex-1 py-3 border-2 rounded-xl font-bold text-sm", bankingMethod === "bkash" ? "border-pink-500 text-pink-600 bg-pink-50" : "border-zinc-200 text-zinc-500")}>bKash</button>
-                            <button onClick={() => setBankingMethod("nagad")} className={cn("flex-1 py-3 border-2 rounded-xl font-bold text-sm", bankingMethod === "nagad" ? "border-orange-500 text-orange-600 bg-orange-50" : "border-zinc-200 text-zinc-500")}>Nagad</button>
+                            <button
+                              onClick={() => setBankingMethod("bkash")}
+                              className={cn(
+                                "flex-1 py-3 border-2 rounded-xl font-bold text-sm",
+                                bankingMethod === "bkash"
+                                  ? "border-pink-500 text-pink-600 bg-pink-50"
+                                  : "border-zinc-200 text-zinc-500",
+                              )}
+                            >
+                              bKash
+                            </button>
+                            <button
+                              onClick={() => setBankingMethod("nagad")}
+                              className={cn(
+                                "flex-1 py-3 border-2 rounded-xl font-bold text-sm",
+                                bankingMethod === "nagad"
+                                  ? "border-orange-500 text-orange-600 bg-orange-50"
+                                  : "border-zinc-200 text-zinc-500",
+                              )}
+                            >
+                              Nagad
+                            </button>
                           </div>
 
                           {bankingMethod && (
                             <div className="p-5 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-200 dark:border-zinc-800 space-y-4 mt-2">
                               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                 <div>
-                                  <div className="text-[10px] font-bold text-zinc-500">Send Money to</div>
-                                  <div className="text-sm sm:text-lg font-bold">{(bankingMethod === 'bkash' ? settings?.bkashNumber : settings?.nagadNumber) || "01778953114"}</div>
+                                  <div className="text-[10px] font-bold text-zinc-500">
+                                    Send Money to
+                                  </div>
+                                  <div className="text-sm sm:text-lg font-bold">
+                                    {(bankingMethod === "bkash"
+                                      ? settings?.bkashNumber
+                                      : settings?.nagadNumber) || "01778953114"}
+                                  </div>
                                 </div>
-                                <Button size="sm" variant="outline" className="w-full sm:w-auto text-xs" onClick={() => navigator.clipboard.writeText((bankingMethod === 'bkash' ? settings?.bkashNumber : settings?.nagadNumber) || "01778953114")}>Copy Number</Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="w-full sm:w-auto text-xs"
+                                  onClick={() =>
+                                    navigator.clipboard.writeText(
+                                      (bankingMethod === "bkash"
+                                        ? settings?.bkashNumber
+                                        : settings?.nagadNumber) ||
+                                        "01778953114",
+                                    )
+                                  }
+                                >
+                                  Copy Number
+                                </Button>
                               </div>
                               <div className="bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-300 p-3 rounded-xl text-xs font-bold leading-relaxed">
-                                Please Send Money exactly ৳{advanceType === "full" ? total : deliveryFee}. Then enter the details below to verify.
+                                Please Send Money exactly ৳
+                                {advanceType === "full" ? total : deliveryFee}.
+                                Then enter the details below to verify.
                               </div>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                                 <div className="space-y-1">
                                   <Label>Sender Name</Label>
-                                  <Input placeholder="Account name" value={bankingAccountName} onChange={(e) => setBankingAccountName(e.target.value)} className="text-sm" />
+                                  <Input
+                                    placeholder="Account name"
+                                    value={bankingAccountName}
+                                    onChange={(e) =>
+                                      setBankingAccountName(e.target.value)
+                                    }
+                                    className="text-sm"
+                                  />
                                 </div>
                                 <div className="space-y-1">
                                   <Label>TrxID</Label>
-                                  <Input placeholder="9A6GH..." value={bankingTrxId} onChange={(e) => setBankingTrxId(e.target.value)} className="text-sm" />
+                                  <Input
+                                    placeholder="9A6GH..."
+                                    value={bankingTrxId}
+                                    onChange={(e) =>
+                                      setBankingTrxId(e.target.value)
+                                    }
+                                    className="text-sm"
+                                  />
                                 </div>
                               </div>
                             </div>
@@ -480,11 +956,23 @@ export default function CheckoutPage() {
                       )}
                     </div>
                   )}
-
                 </CardContent>
                 <CardFooter className="flex justify-between items-center border-t border-zinc-100 dark:border-zinc-800 pt-4 pb-2">
-                  <Button variant="ghost" className="text-xs sm:text-sm px-2 sm:px-4" onClick={prevStep}><ChevronLeft className="mr-1 h-3 w-3 sm:h-4 sm:w-4" /> Back</Button>
-                  <Button onClick={nextStep} disabled={!validateStep(2)} size="default" className="text-xs sm:text-sm px-4 sm:px-6">Review Order</Button>
+                  <Button
+                    variant="ghost"
+                    className="text-xs sm:text-sm px-2 sm:px-4"
+                    onClick={prevStep}
+                  >
+                    <ChevronLeft className="mr-1 h-3 w-3 sm:h-4 sm:w-4" /> Back
+                  </Button>
+                  <Button
+                    onClick={nextStep}
+                    disabled={!validateStep(2)}
+                    size="default"
+                    className="text-xs sm:text-sm px-4 sm:px-6"
+                  >
+                    Review Order
+                  </Button>
                 </CardFooter>
               </Card>
             )}
@@ -494,7 +982,8 @@ export default function CheckoutPage() {
               <Card className="rounded-3xl shadow-sm border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex flex-col gap-2">
                 <CardHeader>
                   <h2 className="text-xl font-bold flex items-center gap-2 text-zinc-900 dark:text-zinc-100">
-                    <Check className="h-5 w-5 text-zinc-900 dark:text-zinc-100" /> Review Your Order
+                    <Check className="h-5 w-5 text-zinc-900 dark:text-zinc-100" />{" "}
+                    Review Your Order
                   </h2>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-6">
@@ -502,38 +991,87 @@ export default function CheckoutPage() {
                     <div className="space-y-2">
                       <Label className="text-zinc-500">Shipping Details</Label>
                       <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-100 dark:border-zinc-800 text-sm font-medium">
-                        <p>{savedAddresses.find((a) => a.id === selectedAddressId)?.name}</p>
-                        <p>{savedAddresses.find((a) => a.id === selectedAddressId)?.phone}</p>
-                        <p className="mt-2">{savedAddresses.find((a) => a.id === selectedAddressId)?.address}</p>
+                        <p>
+                          {
+                            savedAddresses.find(
+                              (a) => a.id === selectedAddressId,
+                            )?.name
+                          }
+                        </p>
+                        <p>
+                          {
+                            savedAddresses.find(
+                              (a) => a.id === selectedAddressId,
+                            )?.phone
+                          }
+                        </p>
+                        <p className="mt-2">
+                          {
+                            savedAddresses.find(
+                              (a) => a.id === selectedAddressId,
+                            )?.address
+                          }
+                        </p>
                       </div>
                     </div>
                     <div className="space-y-2">
                       <Label className="text-zinc-500">Payment Details</Label>
                       <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-100 dark:border-zinc-800 text-sm font-medium">
                         <p className="font-bold text-zinc-900 dark:text-zinc-100">
-                          {paymentType === "cod" ? "Cash on Delivery" : `${bankingMethod?.toUpperCase()} (${advanceType})`}
+                          {paymentType === "cod"
+                            ? "Cash on Delivery"
+                            : `${bankingMethod?.toUpperCase()} (${advanceType})`}
                         </p>
-                        {paymentType === "advance" && <p className="mt-2 text-zinc-500">TrxID: {bankingTrxId}</p>}
+                        {paymentType === "advance" && (
+                          <p className="mt-2 text-zinc-500">
+                            TrxID: {bankingTrxId}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
 
                   <div className="flex items-start gap-3 border-t border-zinc-100 dark:border-zinc-800 pt-6">
-                    <Checkbox id="terms" checked={agreeToTerms} onCheckedChange={(c) => setAgreeToTerms(!!c)} />
-                    <Label htmlFor="terms" className="text-sm font-bold leading-snug cursor-pointer mt-0.5">
-                      I agree to the <span className="underline text-zinc-800 dark:text-zinc-200">Terms of Service</span> and <span className="underline text-zinc-800 dark:text-zinc-200">Privacy Policy</span>. Note: Returns are subjective to warranty policies.
+                    <Checkbox
+                      id="terms"
+                      checked={agreeToTerms}
+                      onCheckedChange={(c) => setAgreeToTerms(!!c)}
+                    />
+                    <Label
+                      htmlFor="terms"
+                      className="text-sm font-bold leading-snug cursor-pointer mt-0.5"
+                    >
+                      I agree to the{" "}
+                      <span className="underline text-zinc-800 dark:text-zinc-200">
+                        Terms of Service
+                      </span>{" "}
+                      and{" "}
+                      <span className="underline text-zinc-800 dark:text-zinc-200">
+                        Privacy Policy
+                      </span>
+                      . Note: Returns are subjective to warranty policies.
                     </Label>
                   </div>
                 </CardContent>
                 <CardFooter className="flex flex-row justify-between items-center border-t border-zinc-100 dark:border-zinc-800 pt-4 pb-2 sm:gap-4 gap-2">
-                  <Button variant="ghost" className="text-xs sm:text-sm px-2 sm:px-4" onClick={prevStep}><ChevronLeft className="mr-1 h-3 w-3 sm:h-4 sm:w-4" /> Back</Button>
-                  <Button onClick={placeOrder} disabled={!validateStep(3) || isLoading} size="default" className="bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-zinc-200 shadow-lg shadow-black/10 dark:shadow-white/10 text-white dark:text-zinc-900 border-0 text-xs sm:text-sm px-4 sm:px-6 flex-1 sm:flex-none">
+                  <Button
+                    variant="ghost"
+                    className="text-xs sm:text-sm px-2 sm:px-4"
+                    onClick={prevStep}
+                  >
+                    <ChevronLeft className="mr-1 h-3 w-3 sm:h-4 sm:w-4" /> Back
+                  </Button>
+                  <Button
+                    onClick={placeOrder}
+                    disabled={!validateStep(3) || isLoading}
+                    size="default"
+                    className="bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-zinc-200 shadow-lg shadow-black/10 dark:shadow-white/10 text-white dark:text-zinc-900 border-0 text-xs sm:text-sm px-4 sm:px-6 flex-1 sm:flex-none"
+                  >
                     <Lock className="mr-2 h-3 w-3 sm:h-4 sm:w-4" /> Complete
                   </Button>
                 </CardFooter>
               </Card>
             )}
-
           </div>
 
           {/* Sidebar */}
@@ -541,7 +1079,8 @@ export default function CheckoutPage() {
             <Card className="rounded-3xl shadow-sm border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
               <CardHeader className="bg-zinc-50/50 dark:bg-zinc-800/20 border-b border-zinc-100 dark:border-zinc-800 pb-5">
                 <CardTitle className="flex items-center gap-2">
-                  <ShoppingBag className="text-zinc-500 w-5 h-5" /> Order Summary
+                  <ShoppingBag className="text-zinc-500 w-5 h-5" /> Order
+                  Summary
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-6 space-y-5">
@@ -549,56 +1088,227 @@ export default function CheckoutPage() {
                   {items.map((item) => (
                     <div key={item.id} className="flex gap-4">
                       <div className="relative w-16 h-16 shrink-0 bg-zinc-50 dark:bg-zinc-800 rounded-xl border border-zinc-100 dark:border-zinc-700 p-1">
-                        <img src={item.image} alt={item.name} className="w-full h-full object-contain mix-blend-multiply dark:mix-blend-normal" />
-                        <span className="absolute -top-2 -right-2 bg-zinc-900 text-white w-5 h-5 flex items-center justify-center rounded-full text-[10px] font-bold shadow-sm">{item.quantity}</span>
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="w-full h-full object-contain mix-blend-multiply dark:mix-blend-normal"
+                        />
+                        <span className="absolute -top-2 -right-2 bg-zinc-900 text-white w-5 h-5 flex items-center justify-center rounded-full text-[10px] font-bold shadow-sm">
+                          {item.quantity}
+                        </span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="font-bold text-sm truncate text-zinc-900 dark:text-zinc-100">{item.name}</div>
-                        <div className="font-bold text-sm text-zinc-500 mt-1">৳{item.price * item.quantity}</div>
+                        <div className="font-bold text-sm truncate text-zinc-900 dark:text-zinc-100">
+                          {item.name}
+                        </div>
+                        <div className="font-bold text-sm text-zinc-500 mt-1">
+                          ৳{item.price * item.quantity}
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
 
-                {!appliedPromo ? (
-                  <div className="flex flex-col gap-2">
-                    <div className="flex gap-2">
-                      <Input placeholder="Promo Code" value={couponCode} onChange={(e) => setCouponCode(e.target.value)} className="h-10 text-xs" />
-                      <Button onClick={applyPromo} variant="outline" size="sm" className="h-10 text-xs shrink-0">Apply</Button>
+                <div className="flex flex-col gap-3">
+                  {!appliedPromo ? (
+                    <>
+                      <div className="flex flex-col gap-2">
+                        <Button
+                          onClick={() => setShowCouponsModal(true)}
+                          variant="outline"
+                          className="w-full text-xs font-bold border-dashed border-zinc-300 dark:border-zinc-700 h-10 flex items-center justify-center gap-2 text-zinc-600 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-800"
+                        >
+                          <Ticket className="w-4 h-4" /> Select a Voucher
+                        </Button>
+                      </div>
+
+                      <div className="flex items-center gap-4 px-2">
+                        <div className="flex-1 h-px bg-zinc-200 dark:bg-zinc-800"></div>
+                        <span className="text-[10px] uppercase font-bold text-zinc-400">
+                          OR
+                        </span>
+                        <div className="flex-1 h-px bg-zinc-200 dark:bg-zinc-800"></div>
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Enter Promo/Affiliate Code"
+                            value={couponCode}
+                            onChange={(e) =>
+                              setCouponCode(e.target.value.toUpperCase())
+                            }
+                            className="h-10 text-xs"
+                          />
+                          <Button
+                            onClick={applyPromo}
+                            variant="outline"
+                            size="sm"
+                            className="h-10 text-xs shrink-0"
+                          >
+                            Apply
+                          </Button>
+                        </div>
+                        {couponError && (
+                          <div className="text-xs font-bold text-red-500">
+                            {couponError}
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex items-center justify-between p-3 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-900/20 rounded-xl">
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2">
+                          <Ticket className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                          <span className="font-bold text-sm text-emerald-800 dark:text-emerald-300">
+                            {appliedPromo.code}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-emerald-600 font-medium ml-6">
+                          -
+                          {appliedPromo.type === "percent"
+                            ? `${appliedPromo.discount}%`
+                            : `৳${appliedPromo.discount}`}{" "}
+                          OFF
+                        </span>
+                      </div>
+                      <button
+                        onClick={removePromo}
+                        className="text-zinc-500 hover:text-red-500 bg-white dark:bg-zinc-800 rounded-full p-1"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
                     </div>
-                    {couponError && <div className="text-xs font-bold text-red-500">{couponError}</div>}
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between p-3 bg-zinc-100 dark:bg-zinc-800 dark:bg-emerald-900/10 border border-zinc-200 dark:border-zinc-800 dark:border-zinc-900 dark:border-zinc-100/20 rounded-xl">
-                    <div className="flex items-center gap-2">
-                      <Percent className="w-4 h-4 text-zinc-800 dark:text-zinc-200" />
-                      <span className="font-bold text-sm text-emerald-800 dark:text-emerald-300">{appliedPromo.code}</span>
+                  )}
+                </div>
+
+                {showCouponsModal && (
+                  <div
+                    className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4 bg-black/50 backdrop-blur-sm"
+                    onClick={() => setShowCouponsModal(false)}
+                  >
+                    <div
+                      className="bg-white dark:bg-zinc-900 w-full max-w-md rounded-t-[32px] md:rounded-[32px] p-6 pb-12 md:pb-6 shadow-2xl animate-in slide-in-from-bottom md:zoom-in-95"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="flex items-center justify-between mb-6">
+                        <div>
+                          <h3 className="font-bold text-lg text-zinc-900 dark:text-zinc-100">
+                            My Vouchers
+                          </h3>
+                          <p className="text-xs text-zinc-500">
+                            Select a voucher to apply to this order
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setShowCouponsModal(false)}
+                          className="p-2 bg-zinc-100 dark:bg-zinc-800 rounded-full hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
+
+                      <div className="flex flex-col gap-3 max-h-[60vh] overflow-y-auto pr-2">
+                        {claimedCouponsList
+                          .filter(
+                            (c) => !(c.expiresAt && c.expiresAt < Date.now()),
+                          )
+                          .map((c, i) => {
+                            const minMet =
+                              !c.minOrderAmount || subtotal >= c.minOrderAmount;
+                            return (
+                              <div
+                                key={i}
+                                className={`relative rounded-xl border flex overflow-hidden ${minMet ? "border-amber-200 bg-amber-50 dark:bg-amber-900/10 dark:border-amber-900" : "border-zinc-200 bg-zinc-50 dark:bg-zinc-800/50 opacity-60"}`}
+                              >
+                                <div
+                                  className={`w-[80px] flex flex-col justify-center items-center p-3 text-white ${minMet ? "bg-amber-500" : "bg-zinc-400 dark:bg-zinc-600"}`}
+                                >
+                                  <span className="text-xl font-black">
+                                    {c.type === "percent"
+                                      ? `${c.discount}%`
+                                      : `৳${c.discount}`}
+                                  </span>
+                                  <span className="text-[10px] font-bold">
+                                    OFF
+                                  </span>
+                                </div>
+                                <div className="flex-1 p-3 flex flex-col justify-center bg-white dark:bg-zinc-900">
+                                  <div className="font-bold text-sm mb-0.5">
+                                    {c.code}
+                                  </div>
+                                  <div className="text-[10px] text-zinc-500">
+                                    {c.minOrderAmount > 0
+                                      ? `Min purchase ৳${c.minOrderAmount}`
+                                      : "No minimum"}
+                                  </div>
+                                  {!minMet && (
+                                    <div className="text-[10px] text-red-500 font-bold mt-1">
+                                      Need ৳
+                                      {(c.minOrderAmount - subtotal).toFixed(0)}{" "}
+                                      more
+                                    </div>
+                                  )}
+                                </div>
+                                <button
+                                  disabled={!minMet}
+                                  onClick={() => {
+                                    setAppliedPromo({
+                                      id: c.id,
+                                      ...c,
+                                      isVoucher: true,
+                                    });
+                                    setCouponCode(c.code);
+                                    setShowCouponsModal(false);
+                                    notify("Voucher applied!", "success");
+                                  }}
+                                  className="absolute right-3 top-1/2 -translate-y-1/2 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-[10px] font-bold px-4 py-2 rounded-full disabled:hidden"
+                                >
+                                  Use
+                                </button>
+                              </div>
+                            );
+                          })}
+                        {claimedCouponsList.length === 0 && (
+                          <div className="text-center py-10">
+                            <Ticket className="w-10 h-10 text-zinc-300 mx-auto mb-2" />
+                            <p className="text-sm font-medium text-zinc-500">
+                              You don't have any vouchers
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <button onClick={removePromo} className="text-zinc-800 dark:text-zinc-200 hover:text-red-500"><X className="w-4 h-4"/></button>
                   </div>
                 )}
 
                 <div className="space-y-3 pt-4 border-t border-zinc-100 dark:border-zinc-800 text-sm font-medium">
                   <div className="flex justify-between text-zinc-500">
                     <span>Subtotal</span>
-                    <span className="text-zinc-900 dark:text-zinc-100">৳{subtotal}</span>
+                    <span className="text-zinc-900 dark:text-zinc-100">
+                      ৳{subtotal}
+                    </span>
                   </div>
                   {discount > 0 && (
-                     <div className="flex justify-between text-zinc-800 dark:text-zinc-200 font-bold">
-                       <span>Discount</span>
-                       <span>-৳{discount}</span>
-                     </div>
+                    <div className="flex justify-between text-zinc-800 dark:text-zinc-200 font-bold">
+                      <span>Discount</span>
+                      <span>-৳{discount}</span>
+                    </div>
                   )}
                   <div className="flex justify-between text-zinc-500">
                     <span>Shipping</span>
-                    <span className="text-zinc-900 dark:text-zinc-100">৳{deliveryFee}</span>
+                    <span className="text-zinc-900 dark:text-zinc-100">
+                      ৳{deliveryFee}
+                    </span>
                   </div>
                   <div className="flex justify-between items-end pt-4 border-t border-zinc-100 dark:border-zinc-800">
-                     <span className="text-zinc-500 font-bold">Total</span>
-                     <span className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">৳{total}</span>
+                    <span className="text-zinc-500 font-bold">Total</span>
+                    <span className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
+                      ৳{total}
+                    </span>
                   </div>
                 </div>
-
               </CardContent>
             </Card>
           </div>

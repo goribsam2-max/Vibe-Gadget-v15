@@ -101,12 +101,28 @@ const ADMIN_PIN_ITEMS: PinListItem[] = [
     href: 'withdrawals'
   },
   {
+    id: 'manage-deposits',
+    name: 'Deposits',
+    info: 'Manage coin deposits',
+    icon: ShoppingBag,
+    pinned: false,
+    href: 'deposits'
+  },
+  {
     id: 'manage-coupons',
-    name: 'Manage Coupons',
-    info: 'Discount codes',
+    name: 'Manage Vouchers',
+    info: 'Claimable coupons',
     icon: Tag,
     pinned: false,
     href: 'coupons'
+  },
+  {
+    id: 'manage-promos',
+    name: 'Manage Promo Codes',
+    info: 'Checkout promo codes',
+    icon: Tag,
+    pinned: false,
+    href: 'promo-codes'
   },
   {
     id: 'manage-reviews',

@@ -184,3 +184,42 @@ export const sendWithdrawalRequestToTelegram = async (data: any) => {
     return null;
   }
 };
+
+export const sendDepositRequestToTelegram = async (data: any) => {
+  try {
+    const message = `
+<b>🪙 NEW COIN DEPOSIT REQUEST</b>
+━━━━━━━━━━━━━━━━━━
+<b>👤 USER DETAILS</b>
+<b>User ID:</b> <code>${data.userId}</code>
+<b>User Email:</b> ${data.userEmail || 'Unknown'}
+
+<b>💰 DEPOSIT DETAILS</b>
+<b>Amount:</b> ${data.amount} VG Coins
+<b>Payment Method:</b> ${data.method.toUpperCase()}
+<b>Transaction ID:</b> <code>${data.trxId}</code>
+
+<b>📅 SYSTEM INFO</b>
+<b>Date:</b> ${new Date(data.createdAt).toLocaleString('en-BD')}
+━━━━━━━━━━━━━━━━━━
+<b>Process via Admin Panel!</b>
+`;
+
+    const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        chat_id: CHAT_ID,
+        text: message,
+        parse_mode: "HTML",
+      }),
+    });
+
+    return await response.json();
+  } catch (error) {
+    console.error("Telegram Error:", error);
+    return null;
+  }
+};

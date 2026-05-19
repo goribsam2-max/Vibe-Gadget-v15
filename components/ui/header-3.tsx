@@ -68,6 +68,51 @@ const adminLinks: LinkItem[] = [
 	{ title: 'Config', href: '/admin/config', icon: Settings, description: 'App settings' },
 ];
 
+const productLinks: LinkItem[] = [
+	{
+		title: 'Home',
+		href: '/',
+		description: 'Discover new and trending gadgets',
+		icon: Home,
+	},
+	{
+		title: 'Catalog',
+		href: '/all-products',
+		description: 'Browse our full collection',
+		icon: Box,
+	},
+	{
+		title: 'Pay',
+		href: '/payment-methods',
+		description: 'Secure payment options',
+		icon: DollarSign,
+	},
+	{
+		title: 'Receive',
+		href: '/orders',
+		description: 'Track and manage your orders',
+		icon: ShoppingBag,
+	},
+	{
+		title: 'Ship',
+		href: '/orders',
+		description: 'Shipping details and status',
+		icon: Bike,
+	},
+	{
+		title: 'Review',
+		href: '/wishlist',
+		description: 'Your saved favorite items',
+		icon: Star,
+	},
+	{
+		title: 'Help Center',
+		href: '/help-center',
+		description: 'Get support and answers',
+		icon: Headset,
+	},
+];
+
 export function Header() {
 	const [open, setOpen] = React.useState(false);
 	const [showBackDialog, setShowBackDialog] = React.useState(false);
@@ -133,9 +178,10 @@ export function Header() {
                                 navigate(-1);
                             } else {
                                 setOpen(!open);
+                                window.dispatchEvent(new CustomEvent('toggleSidebar', { detail: !open }));
                             }
                         }}
-                        className="md:hidden text-zinc-600 dark:text-zinc-300 mr-1"
+                        className="text-zinc-600 dark:text-zinc-300 mr-1"
                         aria-expanded={open}
                         aria-controls="mobile-menu"
                         aria-label="Toggle menu"
@@ -149,57 +195,19 @@ export function Header() {
 					<NavLink to={isAdmin ? "/admin" : "/"} className="hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md p-2 flex items-center pr-2 border-zinc-200 dark:border-zinc-800 shrink-0">
 						<WordmarkIcon className="text-zinc-900 dark:text-zinc-100" />
 					</NavLink>
-					<NavigationMenu className="hidden md:flex">
-						<NavigationMenuList>
-							<NavigationMenuItem>
-								<NavigationMenuTrigger className="bg-transparent text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100 focus:text-zinc-900 dark:focus:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 focus:bg-zinc-100 dark:focus:bg-zinc-800 data-[state=open]:bg-zinc-100 dark:data-[state=open]:bg-zinc-800 data-[active]:bg-zinc-100 dark:data-[active]:bg-zinc-800">
-                                    {isAdmin ? "Admin Pages" : "Discover"}
-                                </NavigationMenuTrigger>
-								<NavigationMenuContent className="p-1 pr-1.5 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 h-96 overflow-y-auto no-scrollbar">
-									<ul className="grid w-[400px] md:w-[600px] grid-cols-2 gap-2 rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 p-2 shadow">
-										{linksToShow.map((item, i) => (
-											<li key={i}>
-												<ListItem {...item} />
-											</li>
-										))}
-									</ul>
-                                    {!isAdmin && (
-                                        <div className="p-2">
-                                            <p className="text-zinc-500 text-sm">
-                                                Looking for something specific?{' '}
-                                                <NavLink to="/search" className="text-zinc-900 dark:text-zinc-100 font-medium hover:underline">
-                                                    Search catalog
-                                                </NavLink>
-                                            </p>
-                                        </div>
-                                    )}
-								</NavigationMenuContent>
-							</NavigationMenuItem>
-                            {!isAdmin ? (
-                                <>
-                                    <NavigationMenuLink className="px-4" asChild>
-                                        <NavLink to="/all-products" className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md p-2 px-4 transition-colors">
-                                            Catalog
-                                        </NavLink>
-                                    </NavigationMenuLink>
-                                    <NavigationMenuLink className="px-4" asChild>
-                                        <NavLink to="/blog" className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md p-2 px-4 transition-colors">
-                                            Blog
-                                        </NavLink>
-                                    </NavigationMenuLink>
-                                </>
-                            ) : (
-                                <NavigationMenuLink className="px-4" asChild>
-                                    <NavLink to="/" className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md p-2 px-4 transition-colors">
-                                        Back to Store
-                                    </NavLink>
-                                </NavigationMenuLink>
-                            )}
-						</NavigationMenuList>
-					</NavigationMenu>
 				</div>
                 
 				<div className="hidden items-center gap-2 md:flex">
+                    <Button variant="ghost" size="icon" onClick={() => navigate('/search')} className="text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                      <Search className="w-5 h-5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => navigate('/wishlist')} className="text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                      <Heart className="w-5 h-5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => navigate('/cart')} className="relative text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                      <ShoppingCart className="w-5 h-5" />
+                        {/* We could potentially show badge count here if we had cart state context, but keeping simple */}
+                    </Button>
                     <Button variant="ghost" size="icon" onClick={toggleTheme} className="text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800">
                       {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
                     </Button>
@@ -219,8 +227,8 @@ export function Header() {
                 </div>
 			</nav>
 
-				<MobileMenu open={open} className="flex flex-col justify-between gap-2 overflow-y-auto bg-white dark:bg-zinc-900 pb-20">
-				<NavigationMenu className="max-w-full block">
+				<MobileMenu open={open} className="flex flex-col justify-between gap-2 overflow-y-auto bg-white dark:bg-zinc-900 pb-20 md:pb-4 border-l md:border-l-0 md:border-r border-zinc-200 dark:border-zinc-800">
+				<div className="max-w-full block">
 					<div className="flex w-full flex-col gap-y-2 pb-4">
 						<span className="text-sm font-bold text-zinc-900 dark:text-zinc-100 px-4 mt-4 mb-2">{isAdmin ? "Admin Pages" : "Explore Pages"}</span>
 						{linksToShow.map((link) => (
@@ -245,7 +253,7 @@ export function Header() {
                             </>
                         )}
 					</div>
-				</NavigationMenu>
+				</div>
 				<div className="flex flex-col gap-2 p-4 mt-auto border-t border-zinc-100 dark:border-zinc-800 w-full mb-4">
                     {isAdmin && (
                         <Button variant="outline" className="w-full bg-transparent border-zinc-200 dark:border-zinc-700 mb-2 text-zinc-700 dark:text-zinc-200" onClick={() => { setOpen(false); navigate('/'); }}>
@@ -289,13 +297,18 @@ function MobileMenu({ open, children, className, ...props }: MobileMenuProps) {
 			id="mobile-menu"
 			className={cn(
 				'bg-white dark:bg-zinc-900',
-				'fixed top-14 right-0 bottom-0 left-0 z-40 flex flex-col overflow-hidden border-y border-zinc-200 dark:border-zinc-800 md:hidden',
+				'fixed top-16 md:top-20 bottom-0 z-40 flex flex-col overflow-hidden',
+                'md:left-0 md:w-64 md:border-r md:border-zinc-200 md:dark:border-zinc-800', // desktop
+                'left-0 right-0' // mobile (removed md:hidden)
 			)}
 		>
 			<div
 				data-slot={open ? 'open' : 'closed'}
 				className={cn(
-					'data-[slot=open]:animate-in data-[slot=open]:zoom-in-95 ease-out',
+                    // On mobile, slide in from right. On desktop, slide in from left.
+					'data-[slot=open]:animate-in data-[slot=closed]:animate-out ease-out duration-300',
+                    'max-md:data-[slot=open]:slide-in-from-right-full max-md:data-[slot=closed]:slide-out-to-right-full',
+                    'md:data-[slot=open]:slide-in-from-left-full md:data-[slot=closed]:slide-out-to-left-full',
 					'size-full',
 					className,
 				)}
@@ -314,11 +327,16 @@ function ListItem({
 	icon: IconComp,
 	className,
 	href,
-	...props
-}: React.ComponentProps<typeof NavigationMenuLink> & LinkItem) {
+    onClick,
+}: LinkItem & { className?: string, onClick?: () => void }) {
 	return (
-		<NavigationMenuLink className={cn('w-full flex flex-row gap-x-3 hover:bg-zinc-100 dark:hover:bg-zinc-800 focus:bg-zinc-100 dark:focus:bg-zinc-800 rounded-xl p-2 transition-colors', className)} {...props} asChild>
-			<NavLink to={href}>
+		<NavLink
+            to={href}
+            onClick={onClick}
+            className={({ isActive }) => 
+                cn('w-full flex items-center flex-row gap-x-3 hover:bg-zinc-100 dark:hover:bg-zinc-800 focus:bg-zinc-100 dark:focus:bg-zinc-800 rounded-xl p-2 transition-colors', isActive && 'bg-zinc-100 dark:bg-zinc-800', className)
+            }
+        >
 				<div className="bg-zinc-100 dark:bg-zinc-800 flex aspect-square size-12 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-700 shadow-sm shrink-0">
 					<IconComp className="text-zinc-700 dark:text-zinc-300 size-5" />
 				</div>
@@ -326,50 +344,9 @@ function ListItem({
 					<span className="font-semibold text-zinc-900 dark:text-zinc-100 text-sm">{title}</span>
 					<span className="text-zinc-500 dark:text-zinc-400 text-xs mt-0.5">{description}</span>
 				</div>
-			</NavLink>
-		</NavigationMenuLink>
+		</NavLink>
 	);
 }
-
-const productLinks: LinkItem[] = [
-	{
-		title: 'Home',
-		href: '/',
-		description: 'Discover new and trending gadgets',
-		icon: Home,
-	},
-	{
-		title: 'Catalog',
-		href: '/all-products',
-		description: 'Browse our full collection',
-		icon: Box,
-	},
-	{
-		title: 'Wishlist',
-		href: '/wishlist',
-		description: 'Your saved favorite items',
-		icon: Heart,
-	},
-	{
-		title: 'My Orders',
-		href: '/orders',
-		description: 'Track and manage your orders',
-		icon: ShoppingBag,
-	},
-	{
-		title: 'Blog',
-		href: '/blog',
-		description: 'Tech news, reviews and tips',
-		icon: Newspaper,
-	},
-	{
-		title: 'Help Center',
-		href: '/help',
-		description: 'Get support and answers',
-		icon: Headset,
-	},
-];
-
 
 function useScroll(threshold: number) {
 	const [scrolled, setScrolled] = React.useState(false);
