@@ -1,6 +1,7 @@
 
 import React, { useState, createContext, useContext } from 'react';
-import { toast, Toaster } from 'sonner';
+import { gooeyToast, GooeyToaster } from 'goey-toast';
+import 'goey-toast/styles.css';
 import { Modal } from './ui/modal';
 
 type ToastType = 'success' | 'error' | 'info';
@@ -41,7 +42,7 @@ interface FullScreenInfoOptions {
 }
 
 interface ToastContextType {
-  notify: (message: string, type?: ToastType) => void;
+  notify: (message: string, type?: ToastType, description?: string) => void;
   confirm: (options: ConfirmOptions) => void;
   alert: (options: AlertOptions) => void;
   prompt: (options: PromptOptions) => void;
@@ -49,6 +50,49 @@ interface ToastContextType {
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
+
+const cleanErrorMessage = (msg: string | any): { title: string; description?: string } => {
+  if (!msg) return { title: "Unexpected Error", description: "An unexpected error occurred. Please try again later." };
+  
+  const msgStr = typeof msg === 'string' ? msg : (msg.message || "An unexpected error occurred.");
+  const m = msgStr.toLowerCase();
+  
+  if (m.includes("auth/user-not-found") || m.includes("auth/wrong-password") || m.includes("auth/invalid-credential")) {
+    return { title: "Authentication Failed", description: "Invalid credentials provided. Please check your details and try again." };
+  }
+  if (m.includes("auth/email-already-in-use")) {
+    return { title: "Account Exists", description: "This email is already associated with an account. Please log in instead." };
+  }
+  if (m.includes("auth/weak-password")) {
+    return { title: "Weak Password", description: "Please use a stronger password with a mix of numbers and symbols." };
+  }
+  if (m.includes("permission-denied") || m.includes("missing or insufficient permissions")) {
+    return { title: "Access Denied", description: "You do not have permission to access this resource or perform this action." };
+  }
+  if (m.includes("network-request-failed") || m.includes("offline")) {
+    return { title: "Network Error", description: "Please check your internet connection and try again." };
+  }
+  if (m.includes("quota-exceeded")) {
+    return { title: "Service Busy", description: "Our servers are experiencing high traffic. Please try again later." };
+  }
+  if (m.includes("requires-recent-login")) {
+    return { title: "Authentication Required", description: "For your security, please log out and log back in to perform this action." };
+  }
+  
+  // Generic fallback to strip technical jargon
+  if (m.includes("firebase") || m.includes("firestore") || m.includes("internal error")) {
+    return { title: "System Error", description: "We encountered an internal issue. Our team has been notified." };
+  }
+  
+  // Clean up any remaining FirebaseError prefix
+  const cleanedText = msgStr.replace(/FirebaseError:\s*/gi, '').trim();
+  
+  // If it's a short string, use it as title. Otherwise, default title and use it as description.
+  if (cleanedText.length < 40) {
+    return { title: cleanedText };
+  }
+  return { title: "Action Failed", description: cleanedText };
+};
 
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [confirmModal, setConfirmModal] = useState<ConfirmOptions | null>(null);
@@ -58,10 +102,24 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   
   const [promptVal, setPromptVal] = useState("");
 
-  const notify = (message: string, type: ToastType = 'info') => {
-    if (type === 'success') toast.success(message);
-    else if (type === 'error') toast.error(message);
-    else toast.info(message);
+  const notify = (message: string, type: ToastType = 'info', description?: string) => {
+    let finalTitle = message;
+    let finalDesc = description;
+
+    if (type === 'error') {
+      const errorData = cleanErrorMessage(message);
+      finalTitle = errorData.title;
+      if (!finalDesc) finalDesc = errorData.description;
+    }
+
+    const config = {
+      preset: 'bouncy' as const,
+      showProgress: true,
+      description: finalDesc || undefined
+    };
+    if (type === 'success') gooeyToast.success(finalTitle, config);
+    else if (type === 'error') gooeyToast.error(finalTitle, config);
+    else gooeyToast.info(finalTitle, config);
   };
 
   const confirm = (options: ConfirmOptions) => setConfirmModal(options);
@@ -75,7 +133,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   return (
     <ToastContext.Provider value={{ notify, confirm, alert, prompt, fullScreenInfo }}>
       {children}
-      <Toaster position="top-right" duration={4000} richColors style={{ zIndex: 999999 }} />
+      <GooeyToaster position="top-right" showProgress closeButton="top-right" />
       
       <Modal.Modal zIndex={200000} active={!!confirmModal} onClickOutside={() => { confirmModal?.onCancel?.(); setConfirmModal(null); }}>
         <Modal.Body>

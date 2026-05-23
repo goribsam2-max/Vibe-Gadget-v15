@@ -51,25 +51,33 @@ export default function CheckoutPage() {
   const notify = useNotify();
   const { isDark } = useTheme();
 
+  // Local storage helper
+  const getSavedState = (key: string, defaultValue: any) => {
+    try {
+      const item = localStorage.getItem(`vibe_checkout_${key}`);
+      return item ? JSON.parse(item) : defaultValue;
+    } catch {
+      return defaultValue;
+    }
+  };
+
   const [items, setItems] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(() => getSavedState("currentStep", 1));
   const [userIp, setUserIp] = useState<string>("");
   const [settings, setSettings] = useState<any>(null);
   const [userCoins, setUserCoins] = useState<number>(0);
 
   // Address
   const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
-  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(
-    null,
-  );
-  const [isAddingNewAddress, setIsAddingNewAddress] = useState(false);
-  const [newAddress, setNewAddress] = useState({
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(() => getSavedState("selectedAddressId", null));
+  const [isAddingNewAddress, setIsAddingNewAddress] = useState(() => getSavedState("isAddingNewAddress", false));
+  const [newAddress, setNewAddress] = useState(() => getSavedState("newAddress", {
     name: "",
     phone: "",
     altPhone: "",
     address: "",
-  });
+  }));
 
   // Payment
   const prefMeth = localStorage.getItem("vibe_preferred_payment");
@@ -81,26 +89,36 @@ export default function CheckoutPage() {
     prefMeth === "Cash on Delivery" ? "cod" : defaultBank ? "advance" : "cod";
   const [paymentType, setPaymentType] = useState<
     "cod" | "advance" | "vgcoin" | null
-  >(defaultPaymentType);
-  const [advanceType, setAdvanceType] = useState<"full" | "delivery" | null>(
-    null,
-  );
-  const [bankingMethod, setBankingMethod] = useState<"bkash" | "nagad" | null>(
-    defaultBank,
-  );
-  const [bankingAccountName, setBankingAccountName] = useState("");
-  const [bankingTrxId, setBankingTrxId] = useState("");
+  >(() => getSavedState("paymentType", defaultPaymentType));
+  const [advanceType, setAdvanceType] = useState<"full" | "delivery" | null>(() => getSavedState("advanceType", null));
+  const [bankingMethod, setBankingMethod] = useState<"bkash" | "nagad" | null>(() => getSavedState("bankingMethod", defaultBank));
+  const [bankingAccountName, setBankingAccountName] = useState(() => getSavedState("bankingAccountName", ""));
+  const [bankingTrxId, setBankingTrxId] = useState(() => getSavedState("bankingTrxId", ""));
 
   // Promo & Gift
   const [couponCode, setCouponCode] = useState("");
   const [appliedPromo, setAppliedPromo] = useState<any>(null);
   const [couponError, setCouponError] = useState("");
-  const [isGift, setIsGift] = useState(false);
-  const [giftNote, setGiftNote] = useState("");
+  const [isGift, setIsGift] = useState(() => getSavedState("isGift", false));
+  const [giftNote, setGiftNote] = useState(() => getSavedState("giftNote", ""));
   const [affiliateRef, setAffiliateRef] = useState<string | null>(null);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
   const [showCouponsModal, setShowCouponsModal] = useState(false);
   const [claimedCouponsList, setClaimedCouponsList] = useState<any[]>([]);
+
+  useEffect(() => {
+    localStorage.setItem("vibe_checkout_currentStep", JSON.stringify(currentStep));
+    localStorage.setItem("vibe_checkout_selectedAddressId", JSON.stringify(selectedAddressId));
+    localStorage.setItem("vibe_checkout_isAddingNewAddress", JSON.stringify(isAddingNewAddress));
+    localStorage.setItem("vibe_checkout_newAddress", JSON.stringify(newAddress));
+    localStorage.setItem("vibe_checkout_paymentType", JSON.stringify(paymentType));
+    localStorage.setItem("vibe_checkout_advanceType", JSON.stringify(advanceType));
+    localStorage.setItem("vibe_checkout_bankingMethod", JSON.stringify(bankingMethod));
+    localStorage.setItem("vibe_checkout_bankingAccountName", JSON.stringify(bankingAccountName));
+    localStorage.setItem("vibe_checkout_bankingTrxId", JSON.stringify(bankingTrxId));
+    localStorage.setItem("vibe_checkout_isGift", JSON.stringify(isGift));
+    localStorage.setItem("vibe_checkout_giftNote", JSON.stringify(giftNote));
+  }, [currentStep, selectedAddressId, isAddingNewAddress, newAddress, paymentType, advanceType, bankingMethod, bankingAccountName, bankingTrxId, isGift, giftNote]);
 
   useEffect(() => {
     const fetchCoupons = async () => {

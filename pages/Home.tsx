@@ -27,7 +27,7 @@ import SEO from "../components/SEO";
 import { useTheme } from "../components/ThemeContext";
 import { ProductSkeleton } from "../components/Skeletons";
 import { CustomSectionEmbed } from "../components/CustomSectionEmbed";
-import { OffersCarousel } from "../components/ui/offers-carousel";
+import { FlashSaleCarousel } from "../components/ui/flash-sale-carousel";
 
 import StoryViewer from "../components/ui/StoryViewer";
 import { ProductCard } from "../components/ui/ProductCard";
@@ -703,19 +703,14 @@ const Home: React.FC<{ userData?: any }> = ({ userData }) => {
 
       {/* Limited Time Deals */}
       {products.some((p) => p.isOffer) && (
-        <div className="mb-10 w-full animate-fade-in">
-          <OffersCarousel
-            offerTitle="Flat 25% off on products"
-            offerSubtitle="Code pre-applied for you! Explore our flash sale today."
-            ctaText="View all deals"
-            onCtaClick={() => navigate("/all-products?filter=offer")}
+        <div className="mb-10 w-full animate-fade-in px-0 md:px-0">
+          <FlashSaleCarousel
+            onSeeAll={() => navigate("/flash-sale")}
             onItemClick={(item) => navigate(`/product/${item.id}`)}
             items={products.filter((p) => p.isOffer).map(p => ({
               id: p.id,
               imageUrl: p.images?.[0] || p.image || "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=800&q=80",
-              title: p.name,
-              subtitle: p.description || p.category,
-              rating: p.rating || 0,
+              name: p.name,
               price: p.price,
               originalPrice: (p as any).originalPrice || Math.round(p.price * 1.25),
               discountPercentage: (p as any).originalPrice ? Math.round((((p as any).originalPrice - p.price) / (p as any).originalPrice) * 100) : 25

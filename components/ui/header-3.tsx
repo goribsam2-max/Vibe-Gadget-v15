@@ -161,14 +161,21 @@ export function Header() {
 		};
 	}, [open]);
 
+	const buttonClass = cn(
+        "transition-all duration-300 bg-transparent text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full"
+    );
+
 	return (
 		<header
-			className={cn('sticky top-0 z-50 w-full border-b border-transparent', {
-				'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800':
-					scrolled,
+			className={cn('sticky top-0 z-50 w-full transition-all duration-300 ease-in-out bg-white dark:bg-zinc-900', {
+				'shadow-[0_4px_20px_-10px_rgba(0,0,0,0.1)] border-b border-zinc-200 dark:border-zinc-800': scrolled,
+                'border-transparent': !scrolled
 			})}
 		>
-			<nav className="mx-auto flex h-16 md:h-20 w-full max-w-[1920px] items-center justify-between px-4 lg:px-8">
+			<nav className={cn(
+                "mx-auto flex w-full max-w-[1920px] items-center justify-between px-4 lg:px-8 transition-all duration-300",
+                scrolled ? "h-16 md:h-18" : "h-20 md:h-24"
+            )}>
 				<div className="flex items-center gap-2 md:gap-5">
 					<Button
                         size="icon"
@@ -181,7 +188,7 @@ export function Header() {
                                 window.dispatchEvent(new CustomEvent('toggleSidebar', { detail: !open }));
                             }
                         }}
-                        className="text-zinc-600 dark:text-zinc-300 mr-1"
+                        className={cn("mr-1", buttonClass)}
                         aria-expanded={open}
                         aria-controls="mobile-menu"
                         aria-label="Toggle menu"
@@ -192,38 +199,37 @@ export function Header() {
                             <MenuToggleIcon open={open} className="size-5" duration={300} />
                         )}
                     </Button>
-					<NavLink to={isAdmin ? "/admin" : "/"} className="hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md p-2 flex items-center pr-2 border-zinc-200 dark:border-zinc-800 shrink-0">
+					<NavLink to={isAdmin ? "/admin" : "/"} className={cn("p-2 flex items-center pr-2 shrink-0", buttonClass, "rounded-3xl border-none ring-0 shadow-none hover:shadow-none bg-transparent")}>
 						<WordmarkIcon className="text-zinc-900 dark:text-zinc-100" />
 					</NavLink>
 				</div>
                 
 				<div className="hidden items-center gap-2 md:flex">
-                    <Button variant="ghost" size="icon" onClick={() => navigate('/search')} className="text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                    <Button variant="ghost" size="icon" onClick={() => navigate('/search')} className={buttonClass}>
                       <Search className="w-5 h-5" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => navigate('/wishlist')} className="text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                    <Button variant="ghost" size="icon" onClick={() => navigate('/wishlist')} className={buttonClass}>
                       <Heart className="w-5 h-5" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => navigate('/cart')} className="relative text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                    <Button variant="ghost" size="icon" onClick={() => navigate('/cart')} className={cn("relative", buttonClass)}>
                       <ShoppingCart className="w-5 h-5" />
-                        {/* We could potentially show badge count here if we had cart state context, but keeping simple */}
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={toggleTheme} className="text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                    <Button variant="ghost" size="icon" onClick={toggleTheme} className={buttonClass}>
                       {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => navigate('/notifications')} className="text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                    <Button variant="ghost" size="icon" onClick={() => navigate('/notifications')} className={buttonClass}>
                       <Bell className="w-5 h-5" />
                     </Button>
-					<AccountMenu />
+					{location.pathname !== '/profile' && <AccountMenu scrolled={scrolled} />}
 				</div>
-                <div className="flex items-center gap-1 md:hidden">
-                    <Button variant="ghost" size="icon" onClick={toggleTheme} className="text-zinc-600 dark:text-zinc-300">
+                <div className="flex items-center gap-2 md:hidden">
+                    <Button variant="ghost" size="icon" onClick={toggleTheme} className={buttonClass}>
                       {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => navigate('/notifications')} className="text-zinc-600 dark:text-zinc-300 border-none hidden sm:flex">
+                    <Button variant="ghost" size="icon" onClick={() => navigate('/notifications')} className={cn("hidden sm:flex", buttonClass)}>
                       <Bell className="w-5 h-5" />
                     </Button>
-					<AccountMenu />
+					{location.pathname !== '/profile' && <AccountMenu scrolled={scrolled} />}
                 </div>
 			</nav>
 

@@ -8,7 +8,7 @@ import { auth, db, messaging } from './firebase';
 import { ToastProvider, useNotify } from './components/Notifications';
 import { UserProfile } from './types';
 import { motion, AnimatePresence } from 'framer-motion';
-import AnimatedLoadingSkeleton from './components/ui/animated-loading-skeleton';
+import { LumaSpin } from './components/ui/luma-spin';
 
 const SEOProvider = () => {
   useEffect(() => {
@@ -211,6 +211,7 @@ import ContactUs from './pages/ContactUs';
 import SitemapPage from './pages/SitemapPage';
 import PasswordManager from './pages/PasswordManager';
 import AllProducts from './pages/AllProducts';
+import FlashSale from './pages/FlashSale';
 import WithdrawPage from './pages/Withdraw';
 import BlogList from './pages/BlogList';
 import BlogDetails from './pages/BlogDetails';
@@ -383,8 +384,39 @@ const AppContent: React.FC = () => {
   }, []);
 
   if (loading) return (
-    <div className="h-screen w-screen flex flex-col items-center justify-center bg-zinc-50 dark:bg-[#121212] fixed inset-0 z-[999] overflow-y-auto pt-10">
-      <AnimatedLoadingSkeleton />
+    <div className="w-full min-h-screen bg-zinc-50 dark:bg-zinc-900">
+      {/* Skeleton Navbar */}
+      <div className="w-full h-16 md:h-20 bg-white dark:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-700 animate-pulse flex items-center justify-between px-4 lg:px-8">
+        <div className="w-32 h-8 bg-zinc-200 dark:bg-zinc-700 rounded-md"></div>
+        <div className="hidden md:flex gap-4">
+          <div className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-700"></div>
+          <div className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-700"></div>
+        </div>
+      </div>
+
+      <div className="max-w-[1440px] mx-auto px-4 lg:px-8 mt-6">
+        {/* Skeleton Hero Banner */}
+        <div className="w-full aspect-[21/9] max-h-[450px] bg-zinc-200 dark:bg-zinc-800 rounded-3xl animate-pulse mb-8"></div>
+        
+        {/* Skeleton Categories */}
+        <div className="flex gap-4 mb-8 overflow-hidden">
+          {Array(6).fill(0).map((_, i) => (
+            <div key={i} className="w-24 h-10 rounded-full bg-zinc-200 dark:bg-zinc-800 animate-pulse shrink-0"></div>
+          ))}
+        </div>
+
+        {/* Skeleton Product Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 md:gap-6 lg:gap-8">
+          {Array(12).fill(0).map((_, i) => (
+            <div key={i} className="w-full flex-col gap-2 flex">
+              <div className="w-full aspect-square bg-zinc-200 dark:bg-zinc-800 rounded-2xl animate-pulse"></div>
+              <div className="w-3/4 h-4 bg-zinc-200 dark:bg-zinc-800 rounded mt-2 animate-pulse"></div>
+              <div className="w-1/2 h-4 bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse"></div>
+              <div className="w-2/3 h-8 bg-zinc-200 dark:bg-zinc-800 rounded-full mt-2 animate-pulse"></div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 
@@ -436,6 +468,7 @@ const AppContent: React.FC = () => {
           <Route path="/wishlist" element={<PageWrapper><Wishlist /></PageWrapper>} />
           <Route path="/search" element={<PageWrapper><Search /></PageWrapper>} />
           <Route path="/all-products" element={<PageWrapper><AllProducts /></PageWrapper>} />
+          <Route path="/flash-sale" element={<PageWrapper><FlashSale /></PageWrapper>} />
           <Route path="/blog" element={<PageWrapper><BlogList /></PageWrapper>} />
           <Route path="/blog/create" element={<PageWrapper><CreateBlog /></PageWrapper>} />
           <Route path="/blog/edit/:slug" element={<PageWrapper><CreateBlog /></PageWrapper>} />

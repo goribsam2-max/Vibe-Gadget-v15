@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useNotify } from "../components/Notifications";
 import Icon from "../components/Icon";
 import { Button } from "@/components/ui/button";
+import { BkashIcon, NagadIcon } from "../components/ui/BrandIcons";
 
 const PaymentMethods: React.FC = () => {
   const navigate = useNavigate();
@@ -14,11 +15,11 @@ const PaymentMethods: React.FC = () => {
   const methods = [
     {
       id: "bKash",
-      logo: "https://www.logo.wine/a/logo/BKash/BKash-Logo.wine.svg",
+      logoComp: BkashIcon,
     },
     {
       id: "Nagad",
-      logo: "https://www.logo.wine/a/logo/Nagad/Nagad-Logo.wine.svg",
+      logoComp: NagadIcon,
     },
     {
       id: "Cash on Delivery",
@@ -68,13 +69,9 @@ const PaymentMethods: React.FC = () => {
               className={`p-5 rounded-2xl border-2 flex items-center justify-between cursor-pointer transition-all ${selected === m.id ? "border-black bg-zinc-100 dark:bg-zinc-800 shadow-sm shadow-black/5" : "border-zinc-200 bg-zinc-50 dark:bg-zinc-800 hover:border-gray-200"}`}
             >
               <div className="flex items-center space-x-4">
-                {m.logo ? (
+                {m.logoComp ? (
                   <div className="w-14 h-14 flex items-center justify-center p-1 bg-zinc-50 dark:bg-zinc-800 rounded-full shadow-sm border border-gray-50">
-                    <img
-                      src={m.logo}
-                      className="w-full h-full object-contain"
-                      alt={m.id}
-                    />
+                    <m.logoComp className="w-full h-full object-contain" />
                   </div>
                 ) : (
                   <div className="w-14 h-14 bg-zinc-50 dark:bg-zinc-800 rounded-full flex items-center justify-center border border-gray-50 shadow-sm">

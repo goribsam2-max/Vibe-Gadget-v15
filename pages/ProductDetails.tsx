@@ -37,6 +37,7 @@ import {
 import { ReviewCard } from "../components/ui/review-card";
 import {
   ChevronRight,
+  ChevronLeft,
   Star,
   Heart,
   Share2,
@@ -52,6 +53,7 @@ import {
   Plus,
   Minus,
 } from "lucide-react";
+import { ImageLightbox } from "../components/ui/image-lightbox";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
@@ -189,7 +191,7 @@ const ProductDetails: React.FC = () => {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [activeImg, setActiveImg] = useState(0);
   const [direction, setDirection] = useState(0);
-  const [fullScreenImg, setFullScreenImg] = useState<string | null>(null);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [bundleItems, setBundleItems] = useState<Product[]>([]);
   const [timeLeft, setTimeLeft] = useState<{
@@ -706,95 +708,131 @@ const ProductDetails: React.FC = () => {
           <main className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12">
             {/* Image Gallery Section */}
             <div className="flex flex-col gap-4">
-              <AnimatePresence mode="popLayout" custom={direction}>
-                <motion.div
-                  key={activeImg}
-                  initial={{ opacity: 0, x: direction > 0 ? 50 : -50 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: direction < 0 ? 50 : -50 }}
-                  transition={{ duration: 0.3 }}
-                  className="relative aspect-square md:aspect-[4/5] w-full overflow-hidden rounded-[32px] bg-[#f5f5f5] dark:bg-zinc-800/80 flex items-center justify-center cursor-zoom-in group"
-                  onClick={() => setFullScreenImg(images[activeImg])}
-                >
-                  <PixelImage
-                    src={images[activeImg]}
-                    alt={`${product.name} image ${activeImg + 1}`}
-                    imgClassName={`object-contain mix-blend-multiply dark:mix-blend-normal group-hover:scale-105 transition-transform duration-700 ${product.stock <= 0 ? "grayscale opacity-75" : ""}`}
-                  />
-
-                  {/* Top Right Heart Outline */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleWishlist();
+              <div className="relative aspect-square md:aspect-[4/5] w-full rounded-[32px] overflow-hidden bg-[#f5f5f5] dark:bg-zinc-800/80">
+                <AnimatePresence mode="popLayout" custom={direction}>
+                  <motion.div
+                    key={activeImg}
+                    initial={{ opacity: 0, x: direction > 0 ? 50 : -50 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: direction < 0 ? 50 : -50 }}
+                    transition={{ duration: 0.3 }}
+                    drag="x"
+                    dragConstraints={{ left: 0, right: 0 }}
+                    dragElastic={1}
+                    onDragEnd={(e, { offset, velocity }) => {
+                      const swipe = Math.abs(offset.x) * velocity.x;
+                      if (swipe < -10000) {
+                        changeImage(activeImg === images.length - 1 ? 0 : activeImg + 1);
+                      } else if (swipe > 10000) {
+                        changeImage(activeImg === 0 ? images.length - 1 : activeImg - 1);
+                      }
                     }}
-                    className="absolute top-5 right-5 bg-white/70 backdrop-blur-md dark:bg-zinc-900/70 border border-white/20 dark:border-zinc-700/50 rounded-full p-3 flex items-center justify-center transition-colors hover:bg-orange-50 dark:hover:bg-zinc-800 z-10 cursor-pointer shadow-sm"
+                    className="absolute inset-0 w-full h-full flex items-center justify-center cursor-zoom-in group"
+                    onClick={() => setIsLightboxOpen(true)}
                   >
-                    <Heart
-                      className={`w-6 h-6 transition-colors ${isWishlisted ? "text-[#ea580c] fill-[#ea580c]" : "text-[#ea580c] fill-none"}`}
+                    <PixelImage
+                      src={images[activeImg]}
+                      alt={`${product.name} image ${activeImg + 1}`}
+                      imgClassName={`object-contain mix-blend-multiply dark:mix-blend-normal group-hover:scale-105 transition-transform duration-700 ${product.stock <= 0 ? "grayscale opacity-75" : ""}`}
                     />
-                  </button>
 
-                  {/* Dynamic Price Corner Bottom Right */}
-                  <div className="absolute bottom-0 right-0 bg-white dark:bg-zinc-950 rounded-tl-[32px] pl-6 pt-5 pb-4 pr-6 flex items-center justify-center min-w-[120px]">
-                    {/* VG Coin Badge */}
-                    {getProductCoinReward(product.id) > 0 && (
-                      <div className="absolute bottom-full right-4 mb-2 flex items-center bg-zinc-900/80 backdrop-blur-md rounded-full px-2 py-1">
-                        <div className="h-4 w-4 flex items-center justify-center font-black text-[9px] text-amber-500 border-2 border-amber-500 rounded-full mr-1.5 bg-white">
-                          V
+                    {/* Top Right Heart Outline */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleWishlist();
+                      }}
+                      className="absolute top-5 right-5 bg-white/70 backdrop-blur-md dark:bg-zinc-900/70 border border-white/20 dark:border-zinc-700/50 rounded-full p-3 flex items-center justify-center transition-colors hover:bg-orange-50 dark:hover:bg-zinc-800 z-10 cursor-pointer shadow-sm"
+                    >
+                      <Heart
+                        className={`w-6 h-6 transition-colors ${isWishlisted ? "text-[#ea580c] fill-[#ea580c]" : "text-[#ea580c] fill-none"}`}
+                      />
+                    </button>
+
+                    {/* Dynamic Price Corner Bottom Right */}
+                    <div className="absolute bottom-0 right-0 bg-white dark:bg-zinc-950 rounded-tl-[32px] pl-6 pt-5 pb-4 pr-6 flex items-center justify-center min-w-[120px]">
+                      {/* VG Coin Badge */}
+                      {getProductCoinReward(product.id) > 0 && (
+                        <div className="absolute bottom-full right-4 mb-2 flex items-center bg-zinc-900/80 backdrop-blur-md rounded-full px-2 py-1">
+                          <div className="h-4 w-4 flex items-center justify-center font-black text-[9px] text-amber-500 border-2 border-amber-500 rounded-full mr-1.5 bg-white">
+                            V
+                          </div>
+                          <span className="text-xs font-bold text-amber-400">
+                            +{getProductCoinReward(product.id)}
+                          </span>
                         </div>
-                        <span className="text-xs font-bold text-amber-400">
-                          +{getProductCoinReward(product.id)}
-                        </span>
-                      </div>
-                    )}
-                    {/* Inverted curves using SVG */}
-                    <svg
-                      className="absolute right-0 bottom-full w-6 h-6 text-white dark:text-zinc-950 translate-y-[0.5px]"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                    >
-                      <path d="M24 24H0C13.2548 24 24 13.2548 24 0V24Z" />
-                    </svg>
-                    <svg
-                      className="absolute right-full bottom-0 w-6 h-6 text-white dark:text-zinc-950 translate-x-[0.5px]"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                    >
-                      <path d="M24 24H0C13.2548 24 24 13.2548 24 0V24Z" />
-                    </svg>
+                      )}
+                      {/* Inverted curves using SVG */}
+                      <svg
+                        className="absolute right-0 bottom-full w-6 h-6 text-white dark:text-zinc-950 translate-y-[0.5px]"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                      >
+                        <path d="M24 24H0C13.2548 24 24 13.2548 24 0V24Z" />
+                      </svg>
+                      <svg
+                        className="absolute right-full bottom-0 w-6 h-6 text-white dark:text-zinc-950 translate-x-[0.5px]"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                      >
+                        <path d="M24 24H0C13.2548 24 24 13.2548 24 0V24Z" />
+                      </svg>
 
-                    {/* Price Text directly on the cutout shape */}
-                    <div className="flex items-center justify-center gap-2">
-                      {product.isOffer && product.offerPrice ? (
-                        <>
-                          <span className="text-sm text-zinc-400 font-bold line-through">
+                      {/* Price Text directly on the cutout shape */}
+                      <div className="flex items-center justify-center gap-2">
+                        {product.isOffer && product.offerPrice ? (
+                          <>
+                            <span className="text-sm text-zinc-400 font-bold line-through">
+                              ৳{product.price}
+                            </span>
+                            <span className="text-xl md:text-2xl font-black text-[#ea580c] tracking-tight">
+                              ৳{product.offerPrice}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-xl md:text-2xl font-black text-[#ea580c] tracking-tight">
                             ৳{product.price}
                           </span>
-                          <span className="text-xl md:text-2xl font-black text-[#ea580c] tracking-tight">
-                            ৳{product.offerPrice}
-                          </span>
-                        </>
-                      ) : (
-                        <span className="text-xl md:text-2xl font-black text-[#ea580c] tracking-tight">
-                          ৳{product.price}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {product.stock <= 0 && (
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none">
-                      <div className="bg-zinc-900 text-white px-6 py-3 rounded-full border border-zinc-700 shadow-sm flex items-center space-x-2 animate-pulse">
-                        <Icon name="clock" className="text-zinc-400" />
-                        <span className="text-[10px] font-semibold tracking-normal whitespace-nowrap">
-                          Restocking Soon
-                        </span>
+                        )}
                       </div>
                     </div>
-                  )}
-                </motion.div>
-              </AnimatePresence>
+                  </motion.div>
+                </AnimatePresence>
+
+                {images.length > 1 && (
+                  <>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        changeImage(activeImg === 0 ? images.length - 1 : activeImg - 1);
+                      }}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full bg-white/70 backdrop-blur-md dark:bg-zinc-900/70 border border-white/20 dark:border-zinc-700/50 hover:bg-white dark:hover:bg-zinc-800 transition-colors shadow-sm"
+                    >
+                      <ChevronLeft className="w-5 h-5 text-zinc-800 dark:text-zinc-200" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        changeImage(activeImg === images.length - 1 ? 0 : activeImg + 1);
+                      }}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full bg-white/70 backdrop-blur-md dark:bg-zinc-900/70 border border-white/20 dark:border-zinc-700/50 hover:bg-white dark:hover:bg-zinc-800 transition-colors shadow-sm"
+                    >
+                      <ChevronRight className="w-5 h-5 text-zinc-800 dark:text-zinc-200" />
+                    </button>
+                  </>
+                )}
+
+                {product.stock <= 0 && (
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none">
+                    <div className="bg-zinc-900 text-white px-6 py-3 rounded-full border border-zinc-700 shadow-sm flex items-center space-x-2 animate-pulse">
+                      <Icon name="clock" className="text-zinc-400" />
+                      <span className="text-[10px] font-semibold tracking-normal whitespace-nowrap">
+                        Restocking Soon
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {images.length > 1 && (
                 <div className="flex items-center justify-between">
@@ -812,7 +850,7 @@ const ProductDetails: React.FC = () => {
                     variant="outline"
                     size="sm"
                     className="gap-2"
-                    onClick={() => setFullScreenImg(images[activeImg])}
+                    onClick={() => setIsLightboxOpen(true)}
                   >
                     <Camera className="h-4 w-4" /> Full View
                   </Button>
@@ -1247,33 +1285,12 @@ const ProductDetails: React.FC = () => {
         </aside>
       </div>
 
-      <AnimatePresence>
-        {fullScreenImg && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-zinc-900/80 backdrop-blur-xl z-[100000] flex items-center justify-center p-6 md:p-12 cursor-zoom-out"
-            onClick={() => setFullScreenImg(null)}
-          >
-            <motion.button
-              onClick={() => setFullScreenImg(null)}
-              className="absolute top-6 right-6 md:top-10 md:right-10 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white backdrop-blur-md transition-colors z-[100001]"
-            >
-              <Icon name="times" />
-            </motion.button>
-            <motion.img
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              src={fullScreenImg}
-              className="max-w-full max-h-full object-contain rounded-2xl md:rounded-3xl shadow-2xl pointer-events-auto"
-              alt="Immersive product view"
-              onClick={(e) => e.stopPropagation()}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <ImageLightbox
+        images={images}
+        initialIndex={activeImg}
+        isOpen={isLightboxOpen}
+        onClose={() => setIsLightboxOpen(false)}
+      />
       <CustomSectionEmbed location="product_bottom" />
 
       {/* Fixed Bottom Action Bar */}
@@ -1306,9 +1323,9 @@ const ProductDetails: React.FC = () => {
               <Button
                 onClick={() => addToCart(true)}
                 size="lg"
-                className="flex-1 gap-2 rounded-2xl py-6 text-[15px] font-bold shadow-lg shadow-[#ea580c]/20 bg-[#ea580c] hover:bg-orange-700 text-white border-none transition-all active:scale-[0.98]"
+                className="flex-1 rounded-2xl py-6 text-[15px] font-bold shadow-lg shadow-[#ea580c]/20 bg-[#ea580c] hover:bg-orange-700 text-white border-none transition-all active:scale-[0.98]"
               >
-                <Zap className="h-5 w-5" /> Buy Now
+                Buy Now
               </Button>
             </>
           )}
